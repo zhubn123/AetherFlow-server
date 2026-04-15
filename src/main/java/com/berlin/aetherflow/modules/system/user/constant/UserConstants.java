@@ -1,4 +1,4 @@
-package com.berlin.aetherflow.constant;
+package com.berlin.aetherflow.modules.system.user.constant;
 
 /**
  * 用户相关常量

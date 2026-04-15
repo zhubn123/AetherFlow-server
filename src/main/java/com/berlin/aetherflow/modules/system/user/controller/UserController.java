@@ -1,9 +1,9 @@
-package com.berlin.aetherflow.controller;
+package com.berlin.aetherflow.modules.system.user.controller;
 
-import com.berlin.aetherflow.service.UserService;
-import com.berlin.aetherflow.domain.entity.User;
 import com.berlin.aetherflow.exception.Result;
 import com.berlin.aetherflow.exception.ResultCode;
+import com.berlin.aetherflow.modules.system.user.domain.entity.User;
+import com.berlin.aetherflow.modules.system.user.service.UserService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;

@@ -1,4 +1,4 @@
-package com.berlin.aetherflow.enums;
+package com.berlin.aetherflow.modules.system.user.enums;
 
 import lombok.Getter;
 

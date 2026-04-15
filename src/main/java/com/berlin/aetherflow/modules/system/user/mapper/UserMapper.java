@@ -1,7 +1,7 @@
-package com.berlin.aetherflow.mapper;
+package com.berlin.aetherflow.modules.system.user.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.berlin.aetherflow.domain.entity.User;
+import com.berlin.aetherflow.modules.system.user.domain.entity.User;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

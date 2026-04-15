@@ -1,4 +1,4 @@
-package com.berlin.aetherflow.domain.entity;
+package com.berlin.aetherflow.modules.system.user.domain.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;

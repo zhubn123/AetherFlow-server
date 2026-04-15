@@ -1,4 +1,4 @@
-package com.berlin.aetherflow.satoken;
+package com.berlin.aetherflow.modules.system.auth.handler;
 
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.exception.NotPermissionException;

@@ -1,4 +1,4 @@
-package com.berlin.aetherflow.satoken;
+package com.berlin.aetherflow.modules.system.auth.config;
 
 import org.springframework.context.annotation.Configuration;
 
@@ -9,4 +9,3 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SaTokenConfig {
 }
-
