@@ -1,4 +1,4 @@
-package com.berlin.aetherflow.modules.wms.location.domain.entity;
+package com.berlin.aetherflow.modules.wms.domain.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
