@@ -1,15 +1,12 @@
-package com.berlin.aetherflow.modules.wms.domain.entity;
+package com.berlin.aetherflow.modules.wms.domain.bo;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import com.berlin.aetherflow.common.BaseEntity;
+import com.berlin.aetherflow.modules.wms.domain.entity.InboundOrder;
+import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
-import java.io.Serial;
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -19,13 +16,9 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@TableName("inbound_order")
-public class InboundOrder extends BaseEntity implements Serializable {
+@AutoMapper(target = InboundOrder.class, reverseConvertGenerate = false)
+public class InboundOrderBo extends BaseEntity {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
-
-    @TableId(value = "id", type = IdType.ASSIGN_UUID)
     private Long id;
 
     /**

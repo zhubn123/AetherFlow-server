@@ -25,7 +25,7 @@ public class OutboundOrder extends BaseEntity implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    @TableId(value = "id", type = IdType.AUTO)
+    @TableId(value = "id", type = IdType.ASSIGN_UUID)
     private Long id;
 
     /**

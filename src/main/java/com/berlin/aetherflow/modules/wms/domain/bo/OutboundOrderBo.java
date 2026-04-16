@@ -1,35 +1,28 @@
-package com.berlin.aetherflow.modules.wms.domain.entity;
+package com.berlin.aetherflow.modules.wms.domain.bo;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import com.berlin.aetherflow.common.BaseEntity;
+import com.berlin.aetherflow.modules.wms.domain.entity.OutboundOrder;
+import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
-import java.io.Serial;
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 入库单实体。
+ * 出库单实体。
  */
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@TableName("inbound_order")
-public class InboundOrder extends BaseEntity implements Serializable {
+@AutoMapper(target = OutboundOrder.class, reverseConvertGenerate = false)
+public class OutboundOrderBo extends BaseEntity {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
-
-    @TableId(value = "id", type = IdType.ASSIGN_UUID)
     private Long id;
 
     /**
-     * 入库单号。
+     * 出库单号。
      */
     private String orderNo;
 
@@ -54,9 +47,9 @@ public class InboundOrder extends BaseEntity implements Serializable {
     private BigDecimal totalQty;
 
     /**
-     * 入库时间。
+     * 出库时间。
      */
-    private LocalDateTime inboundTime;
+    private LocalDateTime outboundTime;
 
     /**
      * 备注。

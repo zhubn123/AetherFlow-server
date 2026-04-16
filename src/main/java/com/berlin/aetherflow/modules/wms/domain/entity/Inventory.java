@@ -13,13 +13,13 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 
 /**
- * 出库单明细实体。
+ * 库存实体。
  */
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@TableName("outbound_order_item")
-public class OutboundOrderItem extends BaseEntity implements Serializable {
+@TableName("inventory")
+public class Inventory extends BaseEntity implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -28,9 +28,14 @@ public class OutboundOrderItem extends BaseEntity implements Serializable {
     private Long id;
 
     /**
-     * 出库单ID。
+     * 仓库ID。
      */
-    private Long orderId;
+    private Long warehouseId;
+
+    /**
+     * 库位ID。
+     */
+    private Long locationId;
 
     /**
      * 物料ID。
@@ -38,12 +43,12 @@ public class OutboundOrderItem extends BaseEntity implements Serializable {
     private Long materialId;
 
     /**
-     * 出库数量。
+     * 当前库存。
      */
-    private BigDecimal qty;
+    private BigDecimal quantity;
 
     /**
-     * 备注。
+     * 锁定库存。
      */
-    private String remark;
+    private BigDecimal lockedQuantity;
 }

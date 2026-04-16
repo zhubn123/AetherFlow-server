@@ -1,4 +1,4 @@
-package com.berlin.aetherflow.modules.wms.domain.entity;
+package com.berlin.aetherflow.modules.wms.domain.vo;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -10,16 +10,15 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.math.BigDecimal;
 
 /**
- * 出库单明细实体。
+ * 库位实体。
  */
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@TableName("outbound_order_item")
-public class OutboundOrderItem extends BaseEntity implements Serializable {
+@TableName("location")
+public class LocationVo extends BaseEntity implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -28,19 +27,24 @@ public class OutboundOrderItem extends BaseEntity implements Serializable {
     private Long id;
 
     /**
-     * 出库单ID。
+     * 所属仓库ID。
      */
-    private Long orderId;
+    private Long warehouseId;
 
     /**
-     * 物料ID。
+     * 库位编码。
      */
-    private Long materialId;
+    private String locationCode;
 
     /**
-     * 出库数量。
+     * 库位名称。
      */
-    private BigDecimal qty;
+    private String locationName;
+
+    /**
+     * 库位状态（0正常 1停用）。
+     */
+    private Integer status;
 
     /**
      * 备注。

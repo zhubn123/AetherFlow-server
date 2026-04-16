@@ -1,15 +1,11 @@
-package com.berlin.aetherflow.modules.wms.domain.entity;
+package com.berlin.aetherflow.modules.wms.domain.bo;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import com.berlin.aetherflow.common.BaseEntity;
+import com.berlin.aetherflow.modules.wms.domain.entity.Material;
+import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-
-import java.io.Serial;
-import java.io.Serializable;
 
 /**
  * 物料实体。
@@ -17,13 +13,9 @@ import java.io.Serializable;
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@TableName("material")
-public class Material extends BaseEntity implements Serializable {
+@AutoMapper(target = Material.class, reverseConvertGenerate = false)
+public class MaterialBo extends BaseEntity {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
-
-    @TableId(value = "id", type = IdType.ASSIGN_UUID)
     private Long id;
 
     /**

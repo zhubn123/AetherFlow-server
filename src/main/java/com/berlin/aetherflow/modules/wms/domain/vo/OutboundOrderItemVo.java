@@ -1,4 +1,4 @@
-package com.berlin.aetherflow.modules.wms.domain.entity;
+package com.berlin.aetherflow.modules.wms.domain.vo;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -19,7 +19,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @TableName("outbound_order_item")
-public class OutboundOrderItem extends BaseEntity implements Serializable {
+public class OutboundOrderItemVo extends BaseEntity implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
