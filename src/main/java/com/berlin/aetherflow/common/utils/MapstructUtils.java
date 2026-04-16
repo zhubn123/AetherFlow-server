@@ -1,4 +1,4 @@
-package com.berlin.aetherflow.common;
+package com.berlin.aetherflow.common.utils;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.map.MapUtil;
