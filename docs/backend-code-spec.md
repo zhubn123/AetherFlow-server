@@ -40,7 +40,7 @@ com.berlin.aetherflow
       material
       inbound
       outbound
-      stock
+      inventory
       inventory
 ```
 

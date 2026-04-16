@@ -182,7 +182,7 @@
 - `inbound_order_item`（入库单明细）
 - `outbound_order`（出库单）
 - `outbound_order_item`（出库单明细）
-- `stock`（库存）
+- `inventory`（库存）
 
 第一批收尾补：
 
@@ -242,7 +242,7 @@
 3. `modules/wms/material`
 4. `modules/wms/inbound`
 5. `modules/wms/outbound`
-6. `modules/wms/stock`
+6. `modules/wms/inventory`
 7. `modules/system/auth`（收尾接入）
 
 ### 7.2 前端顺序

@@ -19,7 +19,7 @@ The backend follows a module-oriented monolith structure:
 - `com.berlin.aetherflow.config`: global Spring MVC and infrastructure config
 - `com.berlin.aetherflow.exception`: unified API response and exception handling
 - `com.berlin.aetherflow.modules.system`: system-level modules such as auth, user, and monitor
-- `com.berlin.aetherflow.modules.wms`: WMS business modules such as warehouse, location, material, inbound, outbound, stock, and inventory
+- `com.berlin.aetherflow.modules.wms`: WMS business modules such as warehouse, location, material, inbound, outbound, inventory, and inventory
 
 ## Local Development
 

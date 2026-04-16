@@ -29,7 +29,7 @@
 正确：
 
 - `/api/inbound-orders`
-- `/api/stock-records`
+- `/api/inventory-records`
 
 不推荐：
 

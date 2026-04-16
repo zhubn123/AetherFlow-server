@@ -23,7 +23,7 @@
 - `wms/material`
 - `wms/inbound`
 - `wms/outbound`
-- `wms/stock`
+- `wms/inventory`
 
 收尾模块：
 
@@ -79,7 +79,7 @@
 - `inbound_order_item`（入库单明细）
 - `outbound_order`（出库单）
 - `outbound_order_item`（出库单明细）
-- `stock`（库存）
+- `inventory`（库存）
 
 阶段一收尾补充表：
 
