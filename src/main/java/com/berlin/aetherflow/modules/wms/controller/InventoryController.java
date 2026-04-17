@@ -8,6 +8,7 @@ import com.berlin.aetherflow.common.utils.OrderUtil;
 import com.berlin.aetherflow.exception.Result;
 import com.berlin.aetherflow.modules.wms.domain.bo.InventoryBo;
 import com.berlin.aetherflow.modules.wms.domain.entity.Inventory;
+import com.berlin.aetherflow.modules.wms.domain.query.InventoryQuery;
 import com.berlin.aetherflow.modules.wms.domain.vo.InventoryVo;
 import com.berlin.aetherflow.modules.wms.service.InventoryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,14 +38,9 @@ public class InventoryController {
         return Result.success(vo);
     }
 
-    @Operation(summary = "根据bo分页查询")
+    @Operation(summary = "分页查询")
     @PostMapping("/page")
-    public Result<List<InventoryVo>> list(InventoryBo bo, PageQuery query){
-        IPage<Inventory> page = new Page<>(query.getPageNo(), query.getPageSize());
-        page.orders().add(OrderUtil.build(query.getSortBy(), query.getIsAsc()));
-
-        return Result.success(inventoryService.queryList(page,bo));
+    public Result<List<InventoryVo>> list(@RequestBody InventoryQuery query){
+        return Result.success(inventoryService.queryList(query));
     }
-
-
 }

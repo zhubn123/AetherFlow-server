@@ -1,22 +1,19 @@
-package com.berlin.aetherflow.modules.wms.domain.bo;
+package com.berlin.aetherflow.modules.wms.domain.query;
 
-import com.berlin.aetherflow.common.BaseEntity;
+import com.berlin.aetherflow.common.PageQuery;
 import com.berlin.aetherflow.modules.wms.domain.entity.OutboundOrder;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
-
 import java.time.LocalDateTime;
 
 /**
  * 出库单实体。
  */
 @Data
-@NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @AutoMapper(target = OutboundOrder.class, reverseConvertGenerate = false)
-public class OutboundOrderBo extends BaseEntity {
+public class OutboundOrderQuery extends PageQuery {
 
     private Long id;
 

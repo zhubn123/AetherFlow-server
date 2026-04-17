@@ -1,11 +1,8 @@
 package com.berlin.aetherflow.modules.wms.controller;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.berlin.aetherflow.common.PageQuery;
 import com.berlin.aetherflow.common.utils.MapstructUtils;
-import com.berlin.aetherflow.common.utils.OrderUtil;
 import com.berlin.aetherflow.exception.Result;
+import com.berlin.aetherflow.modules.wms.domain.query.WarehouseQuery;
 import com.berlin.aetherflow.modules.wms.domain.bo.WarehouseBo;
 import com.berlin.aetherflow.modules.wms.domain.entity.Warehouse;
 import com.berlin.aetherflow.modules.wms.domain.vo.WarehouseVo;
@@ -37,13 +34,10 @@ public class WarehouseController {
         return Result.success(vo);
     }
 
-    @Operation(summary = "根据bo分页查询")
+    @Operation(summary = "分页查询")
     @PostMapping("/page")
-    public Result<List<WarehouseVo>> list(WarehouseBo bo, PageQuery query){
-        IPage<Warehouse> page = new Page<>(query.getPageNo(), query.getPageSize());
-        page.orders().add(OrderUtil.build(query.getSortBy(), query.getIsAsc()));
-
-        return Result.success(warehouseService.queryList(page,bo));
+    public Result<List<WarehouseVo>> list(@RequestBody WarehouseQuery query){
+        return Result.success(warehouseService.queryList(query));
     }
 
     @Operation(summary = "根据bo创建仓库")

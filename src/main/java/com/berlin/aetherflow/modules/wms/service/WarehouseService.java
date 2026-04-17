@@ -1,7 +1,7 @@
 package com.berlin.aetherflow.modules.wms.service;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.berlin.aetherflow.modules.wms.domain.query.WarehouseQuery;
 import com.berlin.aetherflow.modules.wms.domain.bo.WarehouseBo;
 import com.berlin.aetherflow.modules.wms.domain.entity.Warehouse;
 import com.berlin.aetherflow.modules.wms.domain.vo.WarehouseVo;
@@ -17,7 +17,7 @@ public interface WarehouseService extends IService<Warehouse> {
 
     WarehouseVo getByCode(String code);
 
-    List<WarehouseVo> queryList(IPage<Warehouse> page, WarehouseBo query);
+    List<WarehouseVo> queryList(WarehouseQuery query);
 
     void createWarehouse(WarehouseBo bo);
 

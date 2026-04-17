@@ -1,7 +1,7 @@
 package com.berlin.aetherflow.modules.wms.domain.bo;
 
 import com.berlin.aetherflow.common.BaseEntity;
-import com.berlin.aetherflow.modules.wms.domain.entity.OutboundOrder;
+import com.berlin.aetherflow.modules.wms.domain.entity.OutboundOrderItem;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@AutoMapper(target = OutboundOrder.class, reverseConvertGenerate = false)
+@AutoMapper(target = OutboundOrderItem.class, reverseConvertGenerate = false)
 public class OutboundOrderItemBo extends BaseEntity {
 
     private Long id;
@@ -26,14 +26,29 @@ public class OutboundOrderItemBo extends BaseEntity {
     private Long orderId;
 
     /**
+     * 行号。
+     */
+    private Integer lineNo;
+
+    /**
      * 物料ID。
      */
     private Long materialId;
 
     /**
-     * 出库数量。
+     * 来源库位ID。
      */
-    private BigDecimal qty;
+    private Long locationId;
+
+    /**
+     * 计划出库数量。
+     */
+    private BigDecimal plannedQty;
+
+    /**
+     * 已出库数量。
+     */
+    private BigDecimal shippedQty;
 
     /**
      * 备注。

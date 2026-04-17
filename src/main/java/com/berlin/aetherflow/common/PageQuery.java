@@ -1,5 +1,7 @@
 package com.berlin.aetherflow.common;
 
+import com.baomidou.mybatisplus.annotation.TableField;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.io.Serial;
@@ -20,11 +22,13 @@ public class PageQuery implements Serializable {
     /**
      * 页码 (默认 1)
      */
+    @Schema(defaultValue = "1",description = "页码 (默认 1)")
     private Integer pageNo = 1;
 
     /**
      * 每页条数 (默认 10)
      */
+    @Schema(defaultValue = "10",description = "每页条数 (默认 10)")
     private Integer pageSize = 10;
 
     /**

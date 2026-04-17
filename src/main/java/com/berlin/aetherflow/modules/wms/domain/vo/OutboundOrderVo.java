@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -25,7 +24,7 @@ public class OutboundOrderVo extends BaseEntity implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    @TableId(value = "id", type = IdType.ASSIGN_UUID)
+    @TableId(value = "id", type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
@@ -39,22 +38,12 @@ public class OutboundOrderVo extends BaseEntity implements Serializable {
     private Long warehouseId;
 
     /**
-     * 库位ID。
-     */
-    private Long locationId;
-
-    /**
      * 状态（0草稿 1已确认）。
      */
     private Integer status;
 
     /**
-     * 总数量。
-     */
-    private BigDecimal totalQty;
-
-    /**
-     * 出库时间。
+     * 实际出库时间。
      */
     private LocalDateTime outboundTime;
 

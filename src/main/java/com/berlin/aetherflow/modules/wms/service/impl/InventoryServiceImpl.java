@@ -3,10 +3,13 @@ package com.berlin.aetherflow.modules.wms.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.berlin.aetherflow.common.utils.MapstructUtils;
+import com.berlin.aetherflow.common.utils.OrderUtil;
 import com.berlin.aetherflow.modules.wms.domain.bo.InventoryBo;
 import com.berlin.aetherflow.modules.wms.domain.entity.Inventory;
+import com.berlin.aetherflow.modules.wms.domain.query.InventoryQuery;
 import com.berlin.aetherflow.modules.wms.domain.vo.InventoryVo;
 import com.berlin.aetherflow.modules.wms.mapper.InventoryMapper;
 import com.berlin.aetherflow.modules.wms.service.InventoryService;
@@ -27,21 +30,17 @@ public class InventoryServiceImpl extends ServiceImpl<InventoryMapper, Inventory
 
     private final InventoryMapper inventoryMapper;
 
-    /**
-     * 分页查询
-     *
-     * @param page
-     * @param bo
-     * @return
-     */
     @Override
-    public List<InventoryVo> queryList(IPage<Inventory> page, InventoryBo bo) {
+    public List<InventoryVo> queryList(InventoryQuery query) {
         LambdaQueryWrapper<Inventory> lqw = Wrappers.<Inventory>lambdaQuery()
-                .eq(bo.getLocationId() != null, Inventory::getLocationId, bo.getLocationId())
-                .eq(bo.getWarehouseId() != null, Inventory::getWarehouseId, bo.getWarehouseId())
-                .eq(bo.getMaterialId() != null, Inventory::getMaterialId, bo.getMaterialId())
-                .ge(bo.getMinQuantity() != null, Inventory::getQuantity, bo.getMinQuantity())
-                .le(bo.getMaxQuantity() != null, Inventory::getQuantity, bo.getMaxQuantity());
+                .eq(query.getLocationId() != null, Inventory::getLocationId, query.getLocationId())
+                .eq(query.getWarehouseId() != null, Inventory::getWarehouseId, query.getWarehouseId())
+                .eq(query.getMaterialId() != null, Inventory::getMaterialId, query.getMaterialId())
+                .ge(query.getMinQuantity() != null, Inventory::getQuantity, query.getMinQuantity())
+                .le(query.getMaxQuantity() != null, Inventory::getQuantity, query.getMaxQuantity());
+
+        IPage<Inventory> page = new Page<>(query.getPageNo(), query.getPageSize());
+        page.orders().add(OrderUtil.build(query.getSortBy(), query.getIsAsc()));
 
         IPage<Inventory> result = inventoryMapper.selectPage(page, lqw);
         return result.getRecords().stream().map(e -> MapstructUtils.convert(e, InventoryVo.class)).toList();

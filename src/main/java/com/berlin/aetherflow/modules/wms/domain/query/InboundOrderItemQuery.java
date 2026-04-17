@@ -1,11 +1,10 @@
-package com.berlin.aetherflow.modules.wms.domain.bo;
+package com.berlin.aetherflow.modules.wms.domain.query;
 
-import com.berlin.aetherflow.common.BaseEntity;
+import com.berlin.aetherflow.common.PageQuery;
 import com.berlin.aetherflow.modules.wms.domain.entity.InboundOrderItem;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
@@ -13,10 +12,9 @@ import java.math.BigDecimal;
  * 入库单明细实体。
  */
 @Data
-@NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @AutoMapper(target = InboundOrderItem.class, reverseConvertGenerate = false)
-public class InboundOrderItemBo extends BaseEntity {
+public class InboundOrderItemQuery extends PageQuery {
 
     private Long id;
 
@@ -26,29 +24,14 @@ public class InboundOrderItemBo extends BaseEntity {
     private Long orderId;
 
     /**
-     * 行号。
-     */
-    private Integer lineNo;
-
-    /**
      * 物料ID。
      */
     private Long materialId;
 
     /**
-     * 目标库位ID。
+     * 入库数量。
      */
-    private Long locationId;
-
-    /**
-     * 计划入库数量。
-     */
-    private BigDecimal plannedQty;
-
-    /**
-     * 已入库数量。
-     */
-    private BigDecimal receivedQty;
+    private BigDecimal qty;
 
     /**
      * 备注。

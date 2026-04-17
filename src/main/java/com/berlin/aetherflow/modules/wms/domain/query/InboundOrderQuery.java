@@ -1,22 +1,21 @@
-package com.berlin.aetherflow.modules.wms.domain.bo;
+package com.berlin.aetherflow.modules.wms.domain.query;
 
-import com.berlin.aetherflow.common.BaseEntity;
+import com.berlin.aetherflow.common.PageQuery;
 import com.berlin.aetherflow.modules.wms.domain.entity.InboundOrder;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
  * 入库单实体。
  */
 @Data
-@NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @AutoMapper(target = InboundOrder.class, reverseConvertGenerate = false)
-public class InboundOrderBo extends BaseEntity {
+public class InboundOrderQuery extends PageQuery {
 
     private Long id;
 
@@ -31,14 +30,33 @@ public class InboundOrderBo extends BaseEntity {
     private Long warehouseId;
 
     /**
+     * 库位ID。
+     */
+    private Long locationId;
+
+    /**
      * 状态（0草稿 1已确认）。
      */
     private Integer status;
 
     /**
-     * 实际入库时间。
+     * 高于数量
      */
-    private LocalDateTime inboundTime;
+    private BigDecimal minQty;
+    /**
+     * 低于数量
+     */
+    private BigDecimal maxQty;
+
+    /**
+     * 入库时间起始。
+     */
+    private LocalDateTime inboundStartTime;
+
+    /**
+     * 入库时间结束。
+     */
+    private LocalDateTime inboundEndTime;
 
     /**
      * 备注。

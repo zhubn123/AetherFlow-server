@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.berlin.aetherflow.modules.wms.domain.bo.InventoryBo;
 import com.berlin.aetherflow.modules.wms.domain.entity.Inventory;
+import com.berlin.aetherflow.modules.wms.domain.query.InventoryQuery;
 import com.berlin.aetherflow.modules.wms.domain.vo.InventoryVo;
 
 import java.util.List;
@@ -15,5 +16,5 @@ import java.util.List;
 */
 public interface InventoryService extends IService<Inventory> {
 
-    List<InventoryVo> queryList(IPage<Inventory> page, InventoryBo bo);
+    List<InventoryVo> queryList(InventoryQuery query);
 }

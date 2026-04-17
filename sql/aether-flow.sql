@@ -147,3 +147,45 @@ create table if not exists inventory
     key idx_stock_material_id (material_id)
 ) engine = InnoDB comment '库存表'
   collate = utf8mb4_unicode_ci;
+
+-- =============================================
+-- 变更记录（2026-04-17）：入库单模型优化
+-- 变更原因：
+-- 1) inbound_order 的 location_id / total_qty 放在表头会限制一单多库位，并造成与明细数量不一致风险
+-- 2) inbound_time 在草稿阶段不应强制写入，改为可空更符合业务语义
+-- 3) inbound_order_item 需要行号、目标库位、计划数量与实收数量，支撑部分收货与差异处理
+-- =============================================
+
+alter table inbound_order
+    drop index idx_inbound_location_id,
+    drop column location_id,
+    drop column total_qty,
+    modify column inbound_time datetime null comment '实际入库时间';
+
+alter table inbound_order_item
+    change column qty planned_qty decimal(18, 2) not null default 0 comment '计划入库数量',
+    add column line_no int not null default 1 comment '行号' after order_id,
+    add column location_id bigint null comment '目标库位ID' after material_id,
+    add column received_qty decimal(18, 2) not null default 0 comment '已入库数量' after planned_qty,
+    add unique key uk_inbound_item_line (order_id, line_no),
+    add key idx_inbound_item_location_id (location_id);
+
+-- =============================================
+-- 变更记录（2026-04-17）：出库单模型优化
+-- 变更原因：
+-- 1) outbound_order 的 location_id / total_qty 放在表头会限制一单多库位，并造成与明细数量不一致风险
+-- 2) outbound_order_item 需要行号、来源库位、计划数量与实发数量，支撑部分拣货与差异处理
+-- =============================================
+
+alter table outbound_order
+    drop index idx_outbound_location_id,
+    drop column location_id,
+    drop column total_qty;
+
+alter table outbound_order_item
+    change column qty planned_qty decimal(18, 2) not null default 0 comment '计划出库数量',
+    add column line_no int not null default 1 comment '行号' after order_id,
+    add column location_id bigint null comment '来源库位ID' after material_id,
+    add column shipped_qty decimal(18, 2) not null default 0 comment '已出库数量' after planned_qty,
+    add unique key uk_outbound_item_line (order_id, line_no),
+    add key idx_outbound_item_location_id (location_id);
