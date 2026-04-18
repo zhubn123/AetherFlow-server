@@ -1,0 +1,93 @@
+name: Deploy Server
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-server-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      DEPLOY_DIR: /srv/aetherflow/server
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build JAR
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -DskipTests clean package
+
+      - name: Resolve JAR path
+        id: jar
+        shell: bash
+        run: |
+          JAR_PATH="$(ls target/*.jar | grep -v 'plain' | head -n 1)"
+          if [ -z "${JAR_PATH}" ]; then
+            echo "No executable jar found under target/"
+            exit 1
+          fi
+          echo "path=${JAR_PATH}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+
+      - name: Trust server host key
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ secrets.SERVER_PORT || '22' }}" "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Prepare remote directories
+        shell: bash
+        run: |
+          ssh -p "${{ secrets.SERVER_PORT || '22' }}" "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "mkdir -p '${DEPLOY_DIR}/releases' '${DEPLOY_DIR}/logs'"
+
+      - name: Upload JAR
+        shell: bash
+        run: |
+          scp -P "${{ secrets.SERVER_PORT || '22' }}" \
+            "${{ steps.jar.outputs.path }}" \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${DEPLOY_DIR}/releases/app-${GITHUB_SHA}.jar"
+
+      - name: Restart service on server
+        shell: bash
+        run: |
+          ssh -p "${{ secrets.SERVER_PORT || '22' }}" "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" << EOF
+          set -euo pipefail
+          DEPLOY_DIR="${DEPLOY_DIR}"
+          JAR_RELEASE="\${DEPLOY_DIR}/releases/app-${GITHUB_SHA}.jar"
+          JAR_CURRENT="\${DEPLOY_DIR}/current.jar"
+          LOG_FILE="\${DEPLOY_DIR}/logs/app.log"
+
+          ln -sfn "\${JAR_RELEASE}" "\${JAR_CURRENT}"
+
+          PID=\$(pgrep -f "\${JAR_CURRENT}" || true)
+          if [ -n "\${PID}" ]; then
+            kill "\${PID}"
+            sleep 2
+          fi
+
+          nohup java -jar "\${JAR_CURRENT}" --spring.profiles.active=prod > "\${LOG_FILE}" 2>&1 &
+          sleep 3
+          pgrep -af "\${JAR_CURRENT}"
+          EOF
