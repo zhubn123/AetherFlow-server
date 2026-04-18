@@ -16,12 +16,15 @@ import java.math.BigDecimal;
 @AutoMapper(target = InboundOrderItem.class, reverseConvertGenerate = false)
 public class InboundOrderItemQuery extends PageQuery {
 
-    private Long id;
-
     /**
      * 入库单ID。
      */
     private Long orderId;
+
+    /**
+     * 行号。
+     */
+    private Integer lineNo;
 
     /**
      * 物料ID。
@@ -29,9 +32,19 @@ public class InboundOrderItemQuery extends PageQuery {
     private Long materialId;
 
     /**
-     * 入库数量。
+     * 目标库位ID。
      */
-    private BigDecimal qty;
+    private Long locationId;
+
+    /**
+     * 计划入库数量。
+     */
+    private BigDecimal plannedQty;
+
+    /**
+     * 已入库数量。
+     */
+    private BigDecimal receivedQty;
 
     /**
      * 备注。

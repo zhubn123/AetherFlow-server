@@ -42,9 +42,8 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
 
         LambdaQueryWrapper<InboundOrder> lqw = Wrappers.<InboundOrder>lambdaQuery()
                 .like(StringUtils.isNotBlank(query.getOrderNo()), InboundOrder::getOrderNo, query.getOrderNo())
+                .eq(query.getWarehouseId() != null, InboundOrder::getWarehouseId, query.getWarehouseId())
                 .eq(query.getStatus() != null, InboundOrder::getStatus, query.getStatus())
-                .ge(query.getMinQty() !=null, InboundOrder::getTotalQty, query.getMinQty())
-                .le(query.getMaxQty() !=null, InboundOrder::getTotalQty, query.getMaxQty())
                 .ge(query.getInboundStartTime() !=null, InboundOrder::getInboundTime, query.getInboundStartTime())
                 .le(query.getInboundEndTime() !=null, InboundOrder::getInboundTime, query.getInboundEndTime())
                 .like(StringUtils.isNotBlank(query.getRemark()), InboundOrder::getRemark, query.getRemark());
@@ -59,7 +58,7 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
         bo.setOrderNo(CodeGenerate.generateSimple(BizCodeTypeConst.INBOUND_ORDER));
         InboundOrder order = MapstructUtils.convert(bo, InboundOrder.class);
 
-        // 生成入库单详情
+        // 生成入库单详情 TODO InboundOrderBo 里要不要加 InboundOrderItemBo
         // inboundOrderItemService.
 
         return inboundOrderMapper.insert(order);

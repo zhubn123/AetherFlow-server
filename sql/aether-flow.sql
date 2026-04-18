@@ -164,8 +164,8 @@ alter table inbound_order
 
 alter table inbound_order_item
     change column qty planned_qty decimal(18, 2) not null default 0 comment '计划入库数量',
-    add column line_no int not null default 1 comment '行号' after order_id,
-    add column location_id bigint null comment '目标库位ID' after material_id,
+    add column line_no      int            not null default 1 comment '行号' after order_id,
+    add column location_id  bigint         null comment '目标库位ID' after material_id,
     add column received_qty decimal(18, 2) not null default 0 comment '已入库数量' after planned_qty,
     add unique key uk_inbound_item_line (order_id, line_no),
     add key idx_inbound_item_location_id (location_id);
@@ -184,8 +184,32 @@ alter table outbound_order
 
 alter table outbound_order_item
     change column qty planned_qty decimal(18, 2) not null default 0 comment '计划出库数量',
-    add column line_no int not null default 1 comment '行号' after order_id,
-    add column location_id bigint null comment '来源库位ID' after material_id,
+    add column line_no     int            not null default 1 comment '行号' after order_id,
+    add column location_id bigint         null comment '来源库位ID' after material_id,
     add column shipped_qty decimal(18, 2) not null default 0 comment '已出库数量' after planned_qty,
     add unique key uk_outbound_item_line (order_id, line_no),
     add key idx_outbound_item_location_id (location_id);
+
+-- =============================================
+-- 变更记录（2026-04-17）：新增user表
+-- =============================================
+
+CREATE TABLE `user`
+(
+    `id`          BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
+    `username`    VARCHAR(255) DEFAULT NULL COMMENT '用户名',
+    `password`    VARCHAR(255) DEFAULT NULL COMMENT '登录密码',
+    `name`        VARCHAR(255) DEFAULT NULL COMMENT '用户昵称',
+    `avatar`      VARCHAR(500) DEFAULT NULL COMMENT '用户头像',
+    `profile`     TEXT         DEFAULT NULL COMMENT '用户简介',
+    `role`        VARCHAR(100) DEFAULT NULL COMMENT '用户角色',
+    `status`      INT          DEFAULT 0 COMMENT '账号状态，0=正常，1=停用',
+    create_by       varchar(64)    not null default '' comment '创建人',
+    create_time     datetime       not null default CURRENT_TIMESTAMP comment '创建时间',
+    update_by       varchar(64)    not null default '' comment '更新人',
+    update_time     datetime       not null default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP comment '更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `idx_username` (`username`) USING BTREE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci COMMENT ='用户表';

@@ -6,7 +6,6 @@ import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -16,8 +15,6 @@ import java.time.LocalDateTime;
 @EqualsAndHashCode(callSuper = true)
 @AutoMapper(target = InboundOrder.class, reverseConvertGenerate = false)
 public class InboundOrderQuery extends PageQuery {
-
-    private Long id;
 
     /**
      * 入库单号。
@@ -30,23 +27,9 @@ public class InboundOrderQuery extends PageQuery {
     private Long warehouseId;
 
     /**
-     * 库位ID。
-     */
-    private Long locationId;
-
-    /**
      * 状态（0草稿 1已确认）。
      */
     private Integer status;
-
-    /**
-     * 高于数量
-     */
-    private BigDecimal minQty;
-    /**
-     * 低于数量
-     */
-    private BigDecimal maxQty;
 
     /**
      * 入库时间起始。

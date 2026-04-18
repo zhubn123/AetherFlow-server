@@ -16,8 +16,6 @@ import java.math.BigDecimal;
 @AutoMapper(target = OutboundOrderItem.class, reverseConvertGenerate = false)
 public class OutboundOrderItemQuery extends PageQuery {
 
-    private Long id;
-
     /**
      * 出库单ID。
      */

@@ -15,8 +15,6 @@ import java.time.LocalDateTime;
 @AutoMapper(target = OutboundOrder.class, reverseConvertGenerate = false)
 public class OutboundOrderQuery extends PageQuery {
 
-    private Long id;
-
     /**
      * 出库单号。
      */
