@@ -213,3 +213,7 @@ CREATE TABLE `user`
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='用户表';
+
+INSERT INTO `user` (id,username,password,name,avatar,profile,role,status,create_time,update_time)
+VALUES ( 1923456789012345678, 'admin', '$2a$10$Ziw/AnOoKNlnpj3J0.N.SO07DQlU8KhlBx9gtNNgDbqPWHJ/kgErS',
+        '管理员', '', '系统管理员账户', 'ADMIN', 0, NOW(), NOW());

@@ -25,12 +25,39 @@
 ```bash
 sudo mkdir -p /srv/aetherflow/server/releases /srv/aetherflow/server/logs
 sudo mkdir -p /srv/aetherflow/web/releases /srv/aetherflow/web/shared
-sudo chown -R berlin:berlin /srv/aetherflow
+sudo chown -R root:root /srv/aetherflow
 ```
 
 ## Nginx 配置模板
 
 保存到 `/etc/nginx/conf.d/beldyl.ink.conf`：
+mkdir -p /srv/aetherflow/web
+
+cat >/etc/nginx/conf.d/aetherflow.conf <<'EOF'
+server {
+listen 80;
+server_name beldyl.ink www.beldyl.ink;
+
+    root /srv/aetherflow/web;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+
+nginx -t
+systemctl reload nginx
 
 ```nginx
 server {
