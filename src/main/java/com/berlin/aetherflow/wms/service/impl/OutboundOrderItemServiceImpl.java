@@ -1,10 +1,16 @@
 package com.berlin.aetherflow.wms.service.impl;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.berlin.aetherflow.common.utils.MapstructUtils;
+import com.berlin.aetherflow.wms.domain.bo.OutboundOrderItemBo;
 import com.berlin.aetherflow.wms.domain.entity.OutboundOrderItem;
 import com.berlin.aetherflow.wms.mapper.OutboundOrderItemMapper;
 import com.berlin.aetherflow.wms.service.OutboundOrderItemService;
 import org.springframework.stereotype.Service;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
 * @author berlin
@@ -13,7 +19,22 @@ import org.springframework.stereotype.Service;
 */
 @Service
 public class OutboundOrderItemServiceImpl extends ServiceImpl<OutboundOrderItemMapper, OutboundOrderItem>
-    implements OutboundOrderItemService {
+        implements OutboundOrderItemService {
+
+    @Override
+    public void saveOutboundOrderItems(List<OutboundOrderItemBo> itemsBo) {
+        if (itemsBo == null || itemsBo.isEmpty()) {
+            return;
+        }
+        List<OutboundOrderItem> items = MapstructUtils.convert(itemsBo, OutboundOrderItem.class);
+        saveBatch(items);
+    }
+
+    @Override
+    public void replaceOutboundOrderItems(Long orderId, List<OutboundOrderItemBo> itemsBo) {
+        remove(Wrappers.<OutboundOrderItem>lambdaQuery().eq(OutboundOrderItem::getOrderId, orderId));
+        saveOutboundOrderItems(itemsBo == null ? Collections.emptyList() : itemsBo);
+    }
 
 }
 

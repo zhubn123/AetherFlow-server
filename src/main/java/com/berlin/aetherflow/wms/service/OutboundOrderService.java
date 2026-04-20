@@ -1,7 +1,12 @@
 package com.berlin.aetherflow.wms.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.berlin.aetherflow.common.PageResult;
+import com.berlin.aetherflow.wms.domain.bo.OutboundOrderActionBo;
+import com.berlin.aetherflow.wms.domain.bo.OutboundOrderBo;
 import com.berlin.aetherflow.wms.domain.entity.OutboundOrder;
+import com.berlin.aetherflow.wms.domain.query.OutboundOrderQuery;
+import com.berlin.aetherflow.wms.domain.vo.OutboundOrderVo;
 
 /**
 * @author berlin
@@ -10,4 +15,11 @@ import com.berlin.aetherflow.wms.domain.entity.OutboundOrder;
 */
 public interface OutboundOrderService extends IService<OutboundOrder> {
 
+    PageResult<OutboundOrderVo> queryList(OutboundOrderQuery query);
+
+    Long createOutboundOrder(OutboundOrderBo bo);
+
+    Boolean updateOutboundOrder(OutboundOrderBo bo);
+
+    Boolean applyAction(Long id, OutboundOrderActionBo bo);
 }

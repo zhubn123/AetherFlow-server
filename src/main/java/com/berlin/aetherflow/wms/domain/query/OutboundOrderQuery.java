@@ -31,9 +31,14 @@ public class OutboundOrderQuery extends PageQuery {
     private Integer status;
 
     /**
-     * 实际出库时间。
+     * 出库时间起始。
      */
-    private LocalDateTime outboundTime;
+    private LocalDateTime outboundStartTime;
+
+    /**
+     * 出库时间结束。
+     */
+    private LocalDateTime outboundEndTime;
 
     /**
      * 备注。

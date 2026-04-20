@@ -33,14 +33,29 @@ public class OutboundOrderItem extends BaseEntity implements Serializable {
     private Long orderId;
 
     /**
+     * 行号。
+     */
+    private Integer lineNo;
+
+    /**
      * 物料ID。
      */
     private Long materialId;
 
     /**
-     * 出库数量。
+     * 来源库位ID。
      */
-    private BigDecimal qty;
+    private Long locationId;
+
+    /**
+     * 计划出库数量。
+     */
+    private BigDecimal plannedQty;
+
+    /**
+     * 已出库数量。
+     */
+    private BigDecimal shippedQty;
 
     /**
      * 备注。

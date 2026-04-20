@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -38,19 +37,9 @@ public class OutboundOrder extends BaseEntity implements Serializable {
     private Long warehouseId;
 
     /**
-     * 库位ID。
-     */
-    private Long locationId;
-
-    /**
      * 状态（0草稿 1已确认）。
      */
     private Integer status;
-
-    /**
-     * 总数量。
-     */
-    private BigDecimal totalQty;
 
     /**
      * 出库时间。

@@ -1,7 +1,10 @@
 package com.berlin.aetherflow.wms.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.berlin.aetherflow.wms.domain.bo.OutboundOrderItemBo;
 import com.berlin.aetherflow.wms.domain.entity.OutboundOrderItem;
+
+import java.util.List;
 
 /**
 * @author berlin
@@ -9,5 +12,9 @@ import com.berlin.aetherflow.wms.domain.entity.OutboundOrderItem;
 * @createDate 2026-04-15 16:17:27
 */
 public interface OutboundOrderItemService extends IService<OutboundOrderItem> {
+
+    void saveOutboundOrderItems(List<OutboundOrderItemBo> itemsBo);
+
+    void replaceOutboundOrderItems(Long orderId, List<OutboundOrderItemBo> itemsBo);
 
 }
