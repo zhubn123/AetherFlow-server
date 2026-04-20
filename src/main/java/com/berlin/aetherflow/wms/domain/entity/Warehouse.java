@@ -27,7 +27,7 @@ public class Warehouse extends BaseEntity implements Serializable {
     /**
      * 仓库编码。
      */
-    @TableField(updateStrategy = FieldStrategy.NOT_NULL)
+    @TableField(updateStrategy = FieldStrategy.NEVER)
     private String warehouseCode;
 
     /**

@@ -1,8 +1,6 @@
 package com.berlin.aetherflow.wms.domain.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import com.berlin.aetherflow.common.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -31,6 +29,7 @@ public class OutboundOrder extends BaseEntity implements Serializable {
     /**
      * 出库单号。
      */
+    @TableField(updateStrategy = FieldStrategy.NEVER)
     private String orderNo;
 
     /**

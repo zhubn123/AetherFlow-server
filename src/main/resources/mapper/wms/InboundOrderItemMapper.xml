@@ -7,8 +7,11 @@
     <resultMap id="BaseResultMap" type="com.berlin.aetherflow.wms.domain.entity.InboundOrderItem">
             <id property="id" column="id" jdbcType="BIGINT"/>
             <result property="orderId" column="order_id" jdbcType="BIGINT"/>
+            <result property="lineNo" column="line_no" jdbcType="INTEGER"/>
             <result property="materialId" column="material_id" jdbcType="BIGINT"/>
-            <result property="qty" column="qty" jdbcType="DECIMAL"/>
+            <result property="locationId" column="location_id" jdbcType="BIGINT"/>
+            <result property="plannedQty" column="planned_qty" jdbcType="DECIMAL"/>
+            <result property="receivedQty" column="received_qty" jdbcType="DECIMAL"/>
             <result property="remark" column="remark" jdbcType="VARCHAR"/>
             <result property="createBy" column="create_by" jdbcType="VARCHAR"/>
             <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
@@ -18,7 +21,8 @@
 
     <sql id="Base_Column_List">
         id,order_id,material_id,
-        qty,remark,create_by,
-        create_time,update_by,update_time
+        line_no,location_id,planned_qty,
+        received_qty,remark,create_by,create_time,
+        update_by,update_time
     </sql>
 </mapper>

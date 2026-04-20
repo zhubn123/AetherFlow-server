@@ -8,7 +8,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.berlin.aetherflow.common.utils.CodeGenerate;
 import com.berlin.aetherflow.common.utils.MapstructUtils;
 import com.berlin.aetherflow.common.utils.OrderUtil;
-import com.berlin.aetherflow.wms.domain.enums.BizCodeTypeConst;
+import com.berlin.aetherflow.wms.constant.BizCodeTypeConst;
 import com.berlin.aetherflow.wms.domain.query.WarehouseQuery;
 import com.berlin.aetherflow.wms.domain.bo.WarehouseBo;
 import com.berlin.aetherflow.wms.domain.entity.Warehouse;

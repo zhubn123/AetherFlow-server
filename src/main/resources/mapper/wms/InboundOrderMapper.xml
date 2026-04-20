@@ -8,9 +8,7 @@
             <id property="id" column="id" jdbcType="BIGINT"/>
             <result property="orderNo" column="order_no" jdbcType="VARCHAR"/>
             <result property="warehouseId" column="warehouse_id" jdbcType="BIGINT"/>
-            <result property="locationId" column="location_id" jdbcType="BIGINT"/>
             <result property="status" column="status" jdbcType="TINYINT"/>
-            <result property="totalQty" column="total_qty" jdbcType="DECIMAL"/>
             <result property="inboundTime" column="inbound_time" jdbcType="TIMESTAMP"/>
             <result property="remark" column="remark" jdbcType="VARCHAR"/>
             <result property="createBy" column="create_by" jdbcType="VARCHAR"/>
@@ -21,8 +19,8 @@
 
     <sql id="Base_Column_List">
         id,order_no,warehouse_id,
-        location_id,status,total_qty,
-        inbound_time,remark,create_by,
+        status,inbound_time,remark,
+        create_by,
         create_time,update_by,update_time
     </sql>
 </mapper>

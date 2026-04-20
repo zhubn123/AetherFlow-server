@@ -1,4 +1,4 @@
-package com.berlin.aetherflow.wms.domain.enums;
+package com.berlin.aetherflow.wms.constant;
 
 /**
  * BizCodeTypeConst

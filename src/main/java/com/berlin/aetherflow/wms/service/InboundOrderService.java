@@ -1,9 +1,12 @@
 package com.berlin.aetherflow.wms.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.berlin.aetherflow.common.PageResult;
+import com.berlin.aetherflow.wms.domain.bo.InboundOrderActionBo;
 import com.berlin.aetherflow.wms.domain.bo.InboundOrderBo;
 import com.berlin.aetherflow.wms.domain.entity.InboundOrder;
 import com.berlin.aetherflow.wms.domain.query.InboundOrderQuery;
+import com.berlin.aetherflow.wms.domain.vo.InboundOrderVo;
 
 /**
  * @author berlin
@@ -12,7 +15,11 @@ import com.berlin.aetherflow.wms.domain.query.InboundOrderQuery;
  */
 public interface InboundOrderService extends IService<InboundOrder> {
 
-    Object queryList(InboundOrderQuery query);
+    PageResult<InboundOrderVo> queryList(InboundOrderQuery query);
 
-    int createInboundOrder(InboundOrderBo bo);
+    Long createInboundOrder(InboundOrderBo bo);
+
+    Boolean updateInboundOrder(InboundOrderBo bo);
+
+    Boolean applyAction(Long id, InboundOrderActionBo bo);
 }

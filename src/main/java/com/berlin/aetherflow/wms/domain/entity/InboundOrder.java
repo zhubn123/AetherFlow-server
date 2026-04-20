@@ -1,6 +1,8 @@
 package com.berlin.aetherflow.wms.domain.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.berlin.aetherflow.common.BaseEntity;
@@ -10,7 +12,6 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -31,6 +32,7 @@ public class InboundOrder extends BaseEntity implements Serializable {
     /**
      * 入库单号。
      */
+    @TableField(updateStrategy = FieldStrategy.NEVER)
     private String orderNo;
 
     /**
@@ -39,19 +41,9 @@ public class InboundOrder extends BaseEntity implements Serializable {
     private Long warehouseId;
 
     /**
-     * 库位ID。
-     */
-    private Long locationId;
-
-    /**
      * 状态（0草稿 1已确认）。
      */
     private Integer status;
-
-    /**
-     * 总数量。
-     */
-    private BigDecimal totalQty;
 
     /**
      * 入库时间。

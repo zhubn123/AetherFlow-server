@@ -5,12 +5,16 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.berlin.aetherflow.common.PageResult;
 import com.berlin.aetherflow.common.utils.CodeGenerate;
 import com.berlin.aetherflow.common.utils.MapstructUtils;
 import com.berlin.aetherflow.common.utils.OrderUtil;
+import com.berlin.aetherflow.wms.constant.BizCodeTypeConst;
+import com.berlin.aetherflow.wms.constant.OrderStatusConst;
+import com.berlin.aetherflow.wms.domain.bo.InboundOrderActionBo;
 import com.berlin.aetherflow.wms.domain.bo.InboundOrderBo;
+import com.berlin.aetherflow.wms.domain.bo.InboundOrderItemBo;
 import com.berlin.aetherflow.wms.domain.entity.InboundOrder;
-import com.berlin.aetherflow.wms.domain.enums.BizCodeTypeConst;
 import com.berlin.aetherflow.wms.domain.query.InboundOrderQuery;
 import com.berlin.aetherflow.wms.domain.vo.InboundOrderVo;
 import com.berlin.aetherflow.wms.mapper.InboundOrderMapper;
@@ -19,8 +23,13 @@ import com.berlin.aetherflow.wms.service.InboundOrderService;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 
 /**
  * @author berlin
@@ -35,8 +44,14 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
     private final InboundOrderMapper inboundOrderMapper;
     private final InboundOrderItemService inboundOrderItemService;
 
+    /**
+     * 分页查询入库单
+     *
+     * @param query
+     * @return
+     */
     @Override
-    public List<InboundOrderVo> queryList(InboundOrderQuery query) {
+    public PageResult<InboundOrderVo> queryList(InboundOrderQuery query) {
         IPage<InboundOrder> page = new Page<>(query.getPageNo(), query.getPageSize());
         page.orders().add(OrderUtil.build(query.getSortBy(), query.getIsAsc()));
 
@@ -44,24 +59,140 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
                 .like(StringUtils.isNotBlank(query.getOrderNo()), InboundOrder::getOrderNo, query.getOrderNo())
                 .eq(query.getWarehouseId() != null, InboundOrder::getWarehouseId, query.getWarehouseId())
                 .eq(query.getStatus() != null, InboundOrder::getStatus, query.getStatus())
-                .ge(query.getInboundStartTime() !=null, InboundOrder::getInboundTime, query.getInboundStartTime())
-                .le(query.getInboundEndTime() !=null, InboundOrder::getInboundTime, query.getInboundEndTime())
+                .ge(query.getInboundStartTime() != null, InboundOrder::getInboundTime, query.getInboundStartTime())
+                .le(query.getInboundEndTime() != null, InboundOrder::getInboundTime, query.getInboundEndTime())
                 .like(StringUtils.isNotBlank(query.getRemark()), InboundOrder::getRemark, query.getRemark());
 
         IPage<InboundOrder> result = inboundOrderMapper.selectPage(page, lqw);
+        List<InboundOrderVo> records = result.getRecords().stream()
+                .map(e -> MapstructUtils.convert(e, InboundOrderVo.class))
+                .toList();
 
-        return result.getRecords().stream().map(e -> MapstructUtils.convert(e, InboundOrderVo.class)).toList();
+        return PageResult.of(result.getCurrent(), result.getSize(), result.getTotal(), result.getPages(), records);
     }
 
-    public int createInboundOrder(InboundOrderBo bo) {
+    /**
+     * 暂存入库单
+     *
+     * @param bo
+     * @return
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long createInboundOrder(InboundOrderBo bo) {
         // 生成入库单号
         bo.setOrderNo(CodeGenerate.generateSimple(BizCodeTypeConst.INBOUND_ORDER));
         InboundOrder order = MapstructUtils.convert(bo, InboundOrder.class);
+        inboundOrderMapper.insert(order);
 
-        // 生成入库单详情 TODO InboundOrderBo 里要不要加 InboundOrderItemBo
-        // inboundOrderItemService.
+        // 生成入库单详情
+        List<InboundOrderItemBo> itemsBo = normalizeOrderItems(order.getId(), bo.getOrderItemsBo());
+        inboundOrderItemService.saveInboundOrderItems(itemsBo);
 
-        return inboundOrderMapper.insert(order);
+        return order.getId();
+    }
+
+    /**
+     * 编辑入库单（状态！=完成）
+     *
+     * @param bo
+     * @return
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean updateInboundOrder(InboundOrderBo bo) {
+        InboundOrder order = getById(bo.getId());
+        if (order == null) {
+            throw new RuntimeException("入库单不存在");
+        }
+        if (OrderStatusConst.CONFIRMED.equals(order.getStatus())) {
+            throw new RuntimeException("已确认单据不允许编辑");
+        }
+
+        InboundOrder toUpdate = MapstructUtils.convert(bo, InboundOrder.class);
+        boolean updated = updateById(toUpdate);
+        if (!updated) {
+            throw new RuntimeException("入库单更新失败");
+        }
+
+        if (bo.getOrderItemsBo() != null) {
+            List<InboundOrderItemBo> normalizedItems = normalizeOrderItems(bo.getId(), bo.getOrderItemsBo());
+            inboundOrderItemService.replaceInboundOrderItems(bo.getId(), normalizedItems);
+        }
+        return true;
+    }
+
+    /**
+     * 状态更新
+     *
+     * @param id
+     * @param bo
+     * @return
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean applyAction(Long id, InboundOrderActionBo bo) {
+        InboundOrder order = getById(id);
+        if (order == null) {
+            throw new RuntimeException("入库单不存在");
+        }
+
+        String action = bo.getAction();
+        if (StringUtils.isBlank(action)) {
+            throw new RuntimeException("动作不能为空");
+        }
+        action = action.trim().toUpperCase(Locale.ROOT);
+        Integer current = order.getStatus();
+
+        if ("CONFIRM".equals(action)) {
+            if (!OrderStatusConst.DRAFT.equals(current)) {
+                throw new RuntimeException("当前状态不可确认");
+            }
+            order.setStatus(OrderStatusConst.CONFIRMED);
+            boolean ok = updateById(order);
+            if (!ok) {
+                throw new RuntimeException("状态更新失败");
+            }
+            // TODO 确认后入账库存 + 记录状态流转日志
+            return true;
+        }
+
+        throw new RuntimeException("不支持的动作: " + action);
+    }
+
+    /**
+     * 标准化明细：补全 orderId、lineNo、receivedQty。
+     */
+    private List<InboundOrderItemBo> normalizeOrderItems(Long orderId, List<InboundOrderItemBo> itemsBo) {
+        if (itemsBo == null || itemsBo.isEmpty()) {
+            throw new RuntimeException("入库单明细不能为空");
+        }
+
+        List<InboundOrderItemBo> normalizedItems = new ArrayList<>(itemsBo.size());
+        for (int i = 0; i < itemsBo.size(); i++) {
+            InboundOrderItemBo item = itemsBo.get(i);
+            if (item == null) {
+                continue;
+            }
+            item.setOrderId(orderId);
+            if (item.getLineNo() == null) {
+                item.setLineNo(i + 1);
+            }
+            if (item.getReceivedQty() == null) {
+                item.setReceivedQty(BigDecimal.ZERO);
+            }
+            if (Objects.isNull(item.getMaterialId())) {
+                throw new RuntimeException("入库单明细物料不能为空");
+            }
+            if (Objects.isNull(item.getPlannedQty())) {
+                throw new RuntimeException("入库单明细计划数量不能为空");
+            }
+            normalizedItems.add(item);
+        }
+        if (normalizedItems.isEmpty()) {
+            throw new RuntimeException("入库单明细不能为空");
+        }
+        return normalizedItems;
     }
 }
 

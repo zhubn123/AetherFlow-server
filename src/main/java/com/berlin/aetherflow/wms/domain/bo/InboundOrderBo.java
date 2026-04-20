@@ -8,6 +8,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 入库单实体。
@@ -44,4 +45,9 @@ public class InboundOrderBo extends BaseEntity {
      * 备注。
      */
     private String remark;
+
+    /**
+     * 入库单明细
+     */
+    private List<InboundOrderItemBo> orderItemsBo;
 }
