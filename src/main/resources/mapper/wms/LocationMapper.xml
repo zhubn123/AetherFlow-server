@@ -2,9 +2,9 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.berlin.aetherflow.modules.wms.mapper.LocationMapper">
+<mapper namespace="com.berlin.aetherflow.wms.mapper.LocationMapper">
 
-    <resultMap id="BaseResultMap" type="com.berlin.aetherflow.modules.wms.domain.entity.Location">
+    <resultMap id="BaseResultMap" type="com.berlin.aetherflow.wms.domain.entity.Location">
             <id property="id" column="id" jdbcType="BIGINT"/>
             <result property="warehouseId" column="warehouse_id" jdbcType="BIGINT"/>
             <result property="locationCode" column="location_code" jdbcType="VARCHAR"/>

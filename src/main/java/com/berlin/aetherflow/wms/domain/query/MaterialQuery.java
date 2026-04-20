@@ -1,0 +1,48 @@
+package com.berlin.aetherflow.wms.domain.query;
+
+import com.berlin.aetherflow.common.PageQuery;
+import com.berlin.aetherflow.wms.domain.entity.Material;
+import io.github.linpeilie.annotations.AutoMapper;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+/**
+ * 物料实体。
+ */
+@Data
+@EqualsAndHashCode(callSuper = true)
+@AutoMapper(target = Material.class, reverseConvertGenerate = false)
+public class MaterialQuery extends PageQuery {
+
+    private Long id;
+
+    /**
+     * 物料编码。
+     */
+    private String materialCode;
+
+    /**
+     * 物料名称。
+     */
+    private String materialName;
+
+    /**
+     * 规格型号。
+     */
+    private String specification;
+
+    /**
+     * 计量单位。
+     */
+    private String unit;
+
+    /**
+     * 物料状态（0正常 1停用）。
+     */
+    private Integer status;
+
+    /**
+     * 备注。
+     */
+    private String remark;
+}

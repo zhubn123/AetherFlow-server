@@ -445,7 +445,7 @@ src/main/resources/mapper
 示例：
 
 ```xml
-<mapper namespace="com.berlin.aetherflow.modules.system.user.mapper.UserMapper">
+<mapper namespace="com.berlin.aetherflow.system.user.mapper.UserMapper">
 </mapper>
 ```
 

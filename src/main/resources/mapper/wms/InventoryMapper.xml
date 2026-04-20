@@ -2,9 +2,9 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.berlin.aetherflow.modules.wms.mapper.InventoryMapper">
+<mapper namespace="com.berlin.aetherflow.wms.mapper.InventoryMapper">
 
-    <resultMap id="BaseResultMap" type="com.berlin.aetherflow.modules.wms.domain.entity.Inventory">
+    <resultMap id="BaseResultMap" type="com.berlin.aetherflow.wms.domain.entity.Inventory">
             <id property="id" column="id" jdbcType="BIGINT"/>
             <result property="warehouseId" column="warehouse_id" jdbcType="BIGINT"/>
             <result property="locationId" column="location_id" jdbcType="BIGINT"/>
