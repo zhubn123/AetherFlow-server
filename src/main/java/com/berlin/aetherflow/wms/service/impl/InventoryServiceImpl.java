@@ -5,9 +5,9 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.berlin.aetherflow.common.PageResult;
 import com.berlin.aetherflow.common.utils.MapstructUtils;
 import com.berlin.aetherflow.common.utils.OrderUtil;
-import com.berlin.aetherflow.wms.domain.bo.InventoryBo;
 import com.berlin.aetherflow.wms.domain.entity.Inventory;
 import com.berlin.aetherflow.wms.domain.query.InventoryQuery;
 import com.berlin.aetherflow.wms.domain.vo.InventoryVo;
@@ -31,7 +31,7 @@ public class InventoryServiceImpl extends ServiceImpl<InventoryMapper, Inventory
     private final InventoryMapper inventoryMapper;
 
     @Override
-    public List<InventoryVo> queryList(InventoryQuery query) {
+    public PageResult<InventoryVo> queryList(InventoryQuery query) {
         LambdaQueryWrapper<Inventory> lqw = Wrappers.<Inventory>lambdaQuery()
                 .eq(query.getLocationId() != null, Inventory::getLocationId, query.getLocationId())
                 .eq(query.getWarehouseId() != null, Inventory::getWarehouseId, query.getWarehouseId())
@@ -43,7 +43,10 @@ public class InventoryServiceImpl extends ServiceImpl<InventoryMapper, Inventory
         page.orders().add(OrderUtil.build(query.getSortBy(), query.getIsAsc()));
 
         IPage<Inventory> result = inventoryMapper.selectPage(page, lqw);
-        return result.getRecords().stream().map(e -> MapstructUtils.convert(e, InventoryVo.class)).toList();
+        List<InventoryVo> records = result.getRecords().stream()
+                .map(e -> MapstructUtils.convert(e, InventoryVo.class))
+                .toList();
+        return PageResult.of(result.getCurrent(), result.getSize(), result.getTotal(), result.getPages(), records);
     }
 }
 

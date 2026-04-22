@@ -1,21 +1,15 @@
 package com.berlin.aetherflow.wms.controller;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.berlin.aetherflow.common.PageQuery;
-import com.berlin.aetherflow.common.utils.MapstructUtils;
-import com.berlin.aetherflow.common.utils.OrderUtil;
 import com.berlin.aetherflow.exception.Result;
-import com.berlin.aetherflow.wms.domain.bo.InventoryBo;
-import com.berlin.aetherflow.wms.domain.entity.Inventory;
 import com.berlin.aetherflow.wms.domain.query.InventoryQuery;
-import com.berlin.aetherflow.wms.domain.vo.InventoryVo;
 import com.berlin.aetherflow.wms.service.InventoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.AllArgsConstructor;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 库存 Controller。
@@ -30,17 +24,15 @@ public class InventoryController {
 
     private final InventoryService inventoryService;
 
-    @Operation(summary = "根据仓库id查询")
+    @Operation(summary = "根据ID查询库存")
     @GetMapping("/{id}")
-    public Result<InventoryVo> get(@PathVariable Long id){
-        Inventory inventory = inventoryService.getById(id);
-        InventoryVo vo = MapstructUtils.convert(inventory, InventoryVo.class);
-        return Result.success(vo);
+    public Result<?> getById(@PathVariable Long id) {
+        return Result.success(inventoryService.getById(id));
     }
 
-    @Operation(summary = "分页查询")
-    @PostMapping("/page")
-    public Result<List<InventoryVo>> list(@RequestBody InventoryQuery query){
+    @Operation(summary = "库存分页查询")
+    @GetMapping
+    public Result<?> page(@ParameterObject InventoryQuery query) {
         return Result.success(inventoryService.queryList(query));
     }
 }

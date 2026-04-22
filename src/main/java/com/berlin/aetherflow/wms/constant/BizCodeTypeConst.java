@@ -26,6 +26,18 @@ public interface BizCodeTypeConst {
     String WAREHOUSE = "WH";
 
     /**
+     * 库位编码 - LOCATION
+     * 用于标识仓库内的具体存储位置
+     */
+    String LOCATION = "LC";
+
+    /**
+     * 物料编码 - MATERIAL
+     * 用于标识被管理的货物种类
+     */
+    String MATERIAL = "MT";
+
+    /**
      * 采购入库单 - PURCHASE INBOUND
      * 专门用于采购业务的入库单据
      */
