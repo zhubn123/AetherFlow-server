@@ -44,7 +44,7 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
     public List<WarehouseVo> queryList(WarehouseQuery query) {
 
         IPage<Warehouse> page = new Page<>(query.getPageNo(), query.getPageSize());
-        page.orders().add(OrderUtil.build(query.getSortBy(), query.getIsAsc()));
+        OrderUtil.addOrder(page, query.getSortBy(), query.getIsAsc());
 
         LambdaQueryWrapper<Warehouse> lqw = new LambdaQueryWrapper<>();
         if (StringUtils.isNotBlank(query.getWarehouseCode())) {

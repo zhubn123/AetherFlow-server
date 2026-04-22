@@ -2,8 +2,9 @@ package com.berlin.aetherflow.wms.domain.vo;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import com.berlin.aetherflow.common.BaseEntity;
+import com.berlin.aetherflow.wms.domain.entity.InboundOrder;
+import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -18,7 +19,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@TableName("inbound_order")
+@AutoMapper(target = InboundOrder.class, convertGenerate = false)
 public class InboundOrderVo extends BaseEntity implements Serializable {
 
     @Serial
@@ -36,6 +37,16 @@ public class InboundOrderVo extends BaseEntity implements Serializable {
      * 仓库ID。
      */
     private Long warehouseId;
+
+    /**
+     * 仓库编码。
+     */
+    private String warehouseCode;
+
+    /**
+     * 仓库名称。
+     */
+    private String warehouseName;
 
     /**
      * 状态（0草稿 1已确认）。

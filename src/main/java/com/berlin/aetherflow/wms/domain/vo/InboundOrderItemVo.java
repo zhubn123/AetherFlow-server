@@ -2,8 +2,9 @@ package com.berlin.aetherflow.wms.domain.vo;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import com.berlin.aetherflow.common.BaseEntity;
+import com.berlin.aetherflow.wms.domain.entity.InboundOrderItem;
+import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -18,7 +19,7 @@ import java.math.BigDecimal;
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@TableName("inbound_order_item")
+@AutoMapper(target = InboundOrderItem.class, convertGenerate = false)
 public class InboundOrderItemVo extends BaseEntity implements Serializable {
 
     @Serial

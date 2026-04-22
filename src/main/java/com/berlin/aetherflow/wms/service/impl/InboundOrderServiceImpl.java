@@ -15,9 +15,11 @@ import com.berlin.aetherflow.wms.domain.bo.InboundOrderActionBo;
 import com.berlin.aetherflow.wms.domain.bo.InboundOrderBo;
 import com.berlin.aetherflow.wms.domain.bo.InboundOrderItemBo;
 import com.berlin.aetherflow.wms.domain.entity.InboundOrder;
+import com.berlin.aetherflow.wms.domain.entity.Warehouse;
 import com.berlin.aetherflow.wms.domain.query.InboundOrderQuery;
 import com.berlin.aetherflow.wms.domain.vo.InboundOrderVo;
 import com.berlin.aetherflow.wms.mapper.InboundOrderMapper;
+import com.berlin.aetherflow.wms.mapper.WarehouseMapper;
 import com.berlin.aetherflow.wms.service.InboundOrderItemService;
 import com.berlin.aetherflow.wms.service.InboundOrderService;
 import lombok.AllArgsConstructor;
@@ -29,7 +31,10 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * @author berlin
@@ -43,6 +48,7 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
 
     private final InboundOrderMapper inboundOrderMapper;
     private final InboundOrderItemService inboundOrderItemService;
+    private final WarehouseMapper warehouseMapper;
 
     /**
      * 分页查询入库单
@@ -53,7 +59,7 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
     @Override
     public PageResult<InboundOrderVo> queryList(InboundOrderQuery query) {
         IPage<InboundOrder> page = new Page<>(query.getPageNo(), query.getPageSize());
-        page.orders().add(OrderUtil.build(query.getSortBy(), query.getIsAsc()));
+        OrderUtil.addOrder(page, query.getSortBy(), query.getIsAsc());
 
         LambdaQueryWrapper<InboundOrder> lqw = Wrappers.<InboundOrder>lambdaQuery()
                 .like(StringUtils.isNotBlank(query.getOrderNo()), InboundOrder::getOrderNo, query.getOrderNo())
@@ -67,6 +73,7 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
         List<InboundOrderVo> records = result.getRecords().stream()
                 .map(e -> MapstructUtils.convert(e, InboundOrderVo.class))
                 .toList();
+        fillWarehouseDisplay(records);
 
         return PageResult.of(result.getCurrent(), result.getSize(), result.getTotal(), result.getPages(), records);
     }
@@ -194,8 +201,37 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
         }
         return normalizedItems;
     }
+
+    /**
+     * 填充入库单列表的仓库展示字段（编码、名称）。
+     *
+     * @param records 入库单列表
+     */
+    private void fillWarehouseDisplay(List<InboundOrderVo> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+
+        Set<Long> warehouseIds = records.stream()
+                .map(InboundOrderVo::getWarehouseId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (warehouseIds.isEmpty()) {
+            return;
+        }
+
+        Map<Long, Warehouse> warehouseMap = warehouseMapper.selectByIds(warehouseIds).stream()
+                .collect(Collectors.toMap(Warehouse::getId, warehouse -> warehouse, (left, right) -> left));
+
+        for (InboundOrderVo record : records) {
+            Warehouse warehouse = warehouseMap.get(record.getWarehouseId());
+            if (warehouse == null) {
+                continue;
+            }
+            record.setWarehouseCode(warehouse.getWarehouseCode());
+            record.setWarehouseName(warehouse.getWarehouseName());
+        }
+    }
 }
-
-
 
 

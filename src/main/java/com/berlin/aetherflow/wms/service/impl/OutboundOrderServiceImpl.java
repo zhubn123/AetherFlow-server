@@ -15,9 +15,11 @@ import com.berlin.aetherflow.wms.domain.bo.OutboundOrderActionBo;
 import com.berlin.aetherflow.wms.domain.bo.OutboundOrderBo;
 import com.berlin.aetherflow.wms.domain.bo.OutboundOrderItemBo;
 import com.berlin.aetherflow.wms.domain.entity.OutboundOrder;
+import com.berlin.aetherflow.wms.domain.entity.Warehouse;
 import com.berlin.aetherflow.wms.domain.query.OutboundOrderQuery;
 import com.berlin.aetherflow.wms.domain.vo.OutboundOrderVo;
 import com.berlin.aetherflow.wms.mapper.OutboundOrderMapper;
+import com.berlin.aetherflow.wms.mapper.WarehouseMapper;
 import com.berlin.aetherflow.wms.service.OutboundOrderItemService;
 import com.berlin.aetherflow.wms.service.OutboundOrderService;
 import lombok.AllArgsConstructor;
@@ -29,7 +31,10 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
 * @author berlin
@@ -43,6 +48,7 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
 
     private final OutboundOrderMapper outboundOrderMapper;
     private final OutboundOrderItemService outboundOrderItemService;
+    private final WarehouseMapper warehouseMapper;
 
     /**
      * 分页查询出库单
@@ -53,7 +59,7 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
     @Override
     public PageResult<OutboundOrderVo> queryList(OutboundOrderQuery query) {
         IPage<OutboundOrder> page = new Page<>(query.getPageNo(), query.getPageSize());
-        page.orders().add(OrderUtil.build(query.getSortBy(), query.getIsAsc()));
+        OrderUtil.addOrder(page, query.getSortBy(), query.getIsAsc());
 
         LambdaQueryWrapper<OutboundOrder> lqw = Wrappers.<OutboundOrder>lambdaQuery()
                 .like(StringUtils.isNotBlank(query.getOrderNo()), OutboundOrder::getOrderNo, query.getOrderNo())
@@ -67,6 +73,7 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
         List<OutboundOrderVo> records = result.getRecords().stream()
                 .map(e -> MapstructUtils.convert(e, OutboundOrderVo.class))
                 .toList();
+        fillWarehouseDisplay(records);
         return PageResult.of(result.getCurrent(), result.getSize(), result.getTotal(), result.getPages(), records);
     }
 
@@ -189,6 +196,37 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
             throw new RuntimeException("出库单明细不能为空");
         }
         return normalizedItems;
+    }
+
+    /**
+     * 填充出库单列表的仓库展示字段（编码、名称）。
+     *
+     * @param records 出库单列表
+     */
+    private void fillWarehouseDisplay(List<OutboundOrderVo> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+
+        Set<Long> warehouseIds = records.stream()
+                .map(OutboundOrderVo::getWarehouseId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (warehouseIds.isEmpty()) {
+            return;
+        }
+
+        Map<Long, Warehouse> warehouseMap = warehouseMapper.selectByIds(warehouseIds).stream()
+                .collect(Collectors.toMap(Warehouse::getId, warehouse -> warehouse, (left, right) -> left));
+
+        for (OutboundOrderVo record : records) {
+            Warehouse warehouse = warehouseMap.get(record.getWarehouseId());
+            if (warehouse == null) {
+                continue;
+            }
+            record.setWarehouseCode(warehouse.getWarehouseCode());
+            record.setWarehouseName(warehouse.getWarehouseName());
+        }
     }
 
 }

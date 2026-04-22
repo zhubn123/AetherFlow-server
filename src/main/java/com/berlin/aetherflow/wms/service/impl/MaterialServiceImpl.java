@@ -37,7 +37,7 @@ public class MaterialServiceImpl extends ServiceImpl<MaterialMapper, Material>
     @Override
     public PageResult<MaterialVo> queryList(MaterialQuery query) {
         IPage<Material> page = new Page<>(query.getPageNo(), query.getPageSize());
-        page.orders().add(OrderUtil.build(query.getSortBy(), query.getIsAsc()));
+        OrderUtil.addOrder(page, query.getSortBy(), query.getIsAsc());
 
         LambdaQueryWrapper<Material> lqw = new LambdaQueryWrapper<>();
         if (StringUtils.isNotBlank(query.getMaterialCode())) {

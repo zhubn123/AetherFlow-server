@@ -5,6 +5,7 @@ import com.berlin.aetherflow.wms.domain.entity.Inventory;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
@@ -12,6 +13,7 @@ import java.math.BigDecimal;
  * 库存实体。
  */
 @Data
+@NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @AutoMapper(target = Inventory.class, convertGenerate = false)
 public class InventoryVo extends BaseEntity {
@@ -24,14 +26,44 @@ public class InventoryVo extends BaseEntity {
     private Long warehouseId;
 
     /**
+     * 仓库编码。
+     */
+    private String warehouseCode;
+
+    /**
+     * 仓库名称。
+     */
+    private String warehouseName;
+
+    /**
      * 库位ID。
      */
     private Long locationId;
 
     /**
+     * 库位编码。
+     */
+    private String locationCode;
+
+    /**
+     * 库位名称。
+     */
+    private String locationName;
+
+    /**
      * 物料ID。
      */
     private Long materialId;
+
+    /**
+     * 物料编码。
+     */
+    private String materialCode;
+
+    /**
+     * 物料名称。
+     */
+    private String materialName;
 
     /**
      * 当前库存。

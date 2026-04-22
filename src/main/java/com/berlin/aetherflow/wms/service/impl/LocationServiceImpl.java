@@ -11,16 +11,21 @@ import com.berlin.aetherflow.common.utils.OrderUtil;
 import com.berlin.aetherflow.wms.constant.BizCodeTypeConst;
 import com.berlin.aetherflow.wms.domain.bo.LocationBo;
 import com.berlin.aetherflow.wms.domain.entity.Location;
+import com.berlin.aetherflow.wms.domain.entity.Warehouse;
 import com.berlin.aetherflow.wms.domain.query.LocationQuery;
 import com.berlin.aetherflow.wms.domain.vo.LocationVo;
 import com.berlin.aetherflow.wms.mapper.LocationMapper;
+import com.berlin.aetherflow.wms.mapper.WarehouseMapper;
 import com.berlin.aetherflow.wms.service.LocationService;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
 * @author berlin
@@ -33,11 +38,12 @@ public class LocationServiceImpl extends ServiceImpl<LocationMapper, Location>
         implements LocationService {
 
     private final LocationMapper locationMapper;
+    private final WarehouseMapper warehouseMapper;
 
     @Override
     public PageResult<LocationVo> queryList(LocationQuery query) {
         IPage<Location> page = new Page<>(query.getPageNo(), query.getPageSize());
-        page.orders().add(OrderUtil.build(query.getSortBy(), query.getIsAsc()));
+        OrderUtil.addOrder(page, query.getSortBy(), query.getIsAsc());
 
         LambdaQueryWrapper<Location> lqw = new LambdaQueryWrapper<>();
         if (query.getWarehouseId() != null) {
@@ -60,6 +66,7 @@ public class LocationServiceImpl extends ServiceImpl<LocationMapper, Location>
         List<LocationVo> records = result.getRecords().stream()
                 .map(e -> MapstructUtils.convert(e, LocationVo.class))
                 .toList();
+        fillWarehouseDisplay(records);
         return PageResult.of(result.getCurrent(), result.getSize(), result.getTotal(), result.getPages(), records);
     }
 
@@ -88,6 +95,37 @@ public class LocationServiceImpl extends ServiceImpl<LocationMapper, Location>
     @Override
     public Boolean removeLocations(List<Long> ids) {
         return removeByIds(ids);
+    }
+
+    /**
+     * 填充库位列表的仓库展示字段（编码、名称）。
+     *
+     * @param records 库位列表
+     */
+    private void fillWarehouseDisplay(List<LocationVo> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+
+        Set<Long> warehouseIds = records.stream()
+                .map(LocationVo::getWarehouseId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (warehouseIds.isEmpty()) {
+            return;
+        }
+
+        Map<Long, Warehouse> warehouseMap = warehouseMapper.selectByIds(warehouseIds).stream()
+                .collect(Collectors.toMap(Warehouse::getId, warehouse -> warehouse, (left, right) -> left));
+
+        for (LocationVo record : records) {
+            Warehouse warehouse = warehouseMap.get(record.getWarehouseId());
+            if (warehouse == null) {
+                continue;
+            }
+            record.setWarehouseCode(warehouse.getWarehouseCode());
+            record.setWarehouseName(warehouse.getWarehouseName());
+        }
     }
 
 }
