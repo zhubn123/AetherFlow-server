@@ -28,9 +28,13 @@ public class InjectionMetaObjectHandler implements MetaObjectHandler {
                 // 如果createTime为空，则填充当前时间
                 if (ObjectUtil.isNull(baseEntity.getCreateTime())) {
                     baseEntity.setCreateTime(LocalDateTime.now());
+                    // TODO 为当前登录用户
+                    baseEntity.setCreateBy("temp");
                 }
                 // 设置updateTime为当前时间（插入时和更新时都设置）
                 baseEntity.setUpdateTime(LocalDateTime.now());
+                // TODO update_by 为当前登录用户
+                baseEntity.setUpdateBy("temp");
             }
 
         } catch (Exception e) {
@@ -46,6 +50,8 @@ public class InjectionMetaObjectHandler implements MetaObjectHandler {
             if (ObjectUtil.isNotNull(metaObject) && metaObject.getOriginalObject() instanceof BaseEntity baseEntity) {
                 // 更新时间填充(总是设置为当前时间)
                 baseEntity.setUpdateTime(LocalDateTime.now());
+                // TODO update_by 为当前登录用户
+                baseEntity.setUpdateBy("temp");
             }
         } catch (Exception e) {
             log.error("自动注入异常 => ", e);

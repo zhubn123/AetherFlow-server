@@ -26,13 +26,10 @@ public class UserController {
         return Result.success(userService.list());
     }
 
-    // @PostMapping("login")
-    // public Result<User> login(@RequestParam String username,@RequestParam String password) {
-    //     if (username.equals("admin") && password.equals("123456")){
-    //         return Result.success();
-    //     }
-    //     return Result.fail("登录失败");
-    // }
+    @PostMapping("error")
+    public Result<?> error() {
+        return Result.fail(ResultCode.NOT_FOUND.getCode(),"登录失败");
+    }
 
     @Operation(summary = "登录")
     @PostMapping("login")
