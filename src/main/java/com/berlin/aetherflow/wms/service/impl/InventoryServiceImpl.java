@@ -8,12 +8,14 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.berlin.aetherflow.common.PageResult;
 import com.berlin.aetherflow.common.utils.MapstructUtils;
 import com.berlin.aetherflow.common.utils.OrderUtil;
+import com.berlin.aetherflow.wms.domain.entity.Area;
 import com.berlin.aetherflow.wms.domain.entity.Inventory;
 import com.berlin.aetherflow.wms.domain.entity.Location;
 import com.berlin.aetherflow.wms.domain.entity.Material;
 import com.berlin.aetherflow.wms.domain.entity.Warehouse;
 import com.berlin.aetherflow.wms.domain.query.InventoryQuery;
 import com.berlin.aetherflow.wms.domain.vo.InventoryVo;
+import com.berlin.aetherflow.wms.mapper.AreaMapper;
 import com.berlin.aetherflow.wms.mapper.InventoryMapper;
 import com.berlin.aetherflow.wms.mapper.LocationMapper;
 import com.berlin.aetherflow.wms.mapper.MaterialMapper;
@@ -42,6 +44,7 @@ public class InventoryServiceImpl extends ServiceImpl<InventoryMapper, Inventory
     private final WarehouseMapper warehouseMapper;
     private final LocationMapper locationMapper;
     private final MaterialMapper materialMapper;
+    private final AreaMapper areaMapper;
 
     @Override
     public PageResult<InventoryVo> queryList(InventoryQuery query) {
@@ -51,6 +54,20 @@ public class InventoryServiceImpl extends ServiceImpl<InventoryMapper, Inventory
                 .eq(query.getMaterialId() != null, Inventory::getMaterialId, query.getMaterialId())
                 .ge(query.getMinQuantity() != null, Inventory::getQuantity, query.getMinQuantity())
                 .le(query.getMaxQuantity() != null, Inventory::getQuantity, query.getMaxQuantity());
+
+        if (query.getAreaId() != null) {
+            LambdaQueryWrapper<Location> locationLqw = Wrappers.<Location>lambdaQuery()
+                    .select(Location::getId)
+                    .eq(Location::getAreaId, query.getAreaId())
+                    .eq(query.getWarehouseId() != null, Location::getWarehouseId, query.getWarehouseId());
+            List<Long> matchedLocationIds = locationMapper.selectList(locationLqw).stream()
+                    .map(Location::getId)
+                    .toList();
+            if (matchedLocationIds.isEmpty()) {
+                return PageResult.of(Long.valueOf(query.getPageNo()), Long.valueOf(query.getPageSize()), 0L, 0L, List.of());
+            }
+            lqw.in(Inventory::getLocationId, matchedLocationIds);
+        }
 
         IPage<Inventory> page = new Page<>(query.getPageNo(), query.getPageSize());
         OrderUtil.addOrder(page, query.getSortBy(), query.getIsAsc());
@@ -94,6 +111,14 @@ public class InventoryServiceImpl extends ServiceImpl<InventoryMapper, Inventory
                 ? Map.of()
                 : locationMapper.selectByIds(locationIds).stream()
                 .collect(Collectors.toMap(Location::getId, location -> location, (left, right) -> left));
+        Set<Long> areaIds = locationMap.values().stream()
+                .map(Location::getAreaId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, Area> areaMap = areaIds.isEmpty()
+                ? Map.of()
+                : areaMapper.selectByIds(areaIds).stream()
+                .collect(Collectors.toMap(Area::getId, area -> area, (left, right) -> left));
         Map<Long, Material> materialMap = materialIds.isEmpty()
                 ? Map.of()
                 : materialMapper.selectByIds(materialIds).stream()
@@ -108,8 +133,14 @@ public class InventoryServiceImpl extends ServiceImpl<InventoryMapper, Inventory
 
             Location location = locationMap.get(record.getLocationId());
             if (location != null) {
+                record.setAreaId(location.getAreaId());
                 record.setLocationCode(location.getLocationCode());
                 record.setLocationName(location.getLocationName());
+                Area area = areaMap.get(location.getAreaId());
+                if (area != null) {
+                    record.setAreaCode(area.getAreaCode());
+                    record.setAreaName(area.getAreaName());
+                }
             }
 
             Material material = materialMap.get(record.getMaterialId());

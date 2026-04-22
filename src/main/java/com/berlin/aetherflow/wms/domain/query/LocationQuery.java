@@ -24,6 +24,11 @@ public class LocationQuery extends PageQuery {
     private Long warehouseId;
 
     /**
+     * 所属区域ID。
+     */
+    private Long areaId;
+
+    /**
      * 库位编码。
      */
     private String locationCode;

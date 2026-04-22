@@ -10,10 +10,12 @@ import com.berlin.aetherflow.common.utils.MapstructUtils;
 import com.berlin.aetherflow.common.utils.OrderUtil;
 import com.berlin.aetherflow.wms.constant.BizCodeTypeConst;
 import com.berlin.aetherflow.wms.domain.bo.LocationBo;
+import com.berlin.aetherflow.wms.domain.entity.Area;
 import com.berlin.aetherflow.wms.domain.entity.Location;
 import com.berlin.aetherflow.wms.domain.entity.Warehouse;
 import com.berlin.aetherflow.wms.domain.query.LocationQuery;
 import com.berlin.aetherflow.wms.domain.vo.LocationVo;
+import com.berlin.aetherflow.wms.mapper.AreaMapper;
 import com.berlin.aetherflow.wms.mapper.LocationMapper;
 import com.berlin.aetherflow.wms.mapper.WarehouseMapper;
 import com.berlin.aetherflow.wms.service.LocationService;
@@ -39,6 +41,7 @@ public class LocationServiceImpl extends ServiceImpl<LocationMapper, Location>
 
     private final LocationMapper locationMapper;
     private final WarehouseMapper warehouseMapper;
+    private final AreaMapper areaMapper;
 
     @Override
     public PageResult<LocationVo> queryList(LocationQuery query) {
@@ -48,6 +51,9 @@ public class LocationServiceImpl extends ServiceImpl<LocationMapper, Location>
         LambdaQueryWrapper<Location> lqw = new LambdaQueryWrapper<>();
         if (query.getWarehouseId() != null) {
             lqw.eq(Location::getWarehouseId, query.getWarehouseId());
+        }
+        if (query.getAreaId() != null) {
+            lqw.eq(Location::getAreaId, query.getAreaId());
         }
         if (StringUtils.isNotBlank(query.getLocationCode())) {
             lqw.eq(Location::getLocationCode, query.getLocationCode());
@@ -66,12 +72,13 @@ public class LocationServiceImpl extends ServiceImpl<LocationMapper, Location>
         List<LocationVo> records = result.getRecords().stream()
                 .map(e -> MapstructUtils.convert(e, LocationVo.class))
                 .toList();
-        fillWarehouseDisplay(records);
+        fillDisplayFields(records);
         return PageResult.of(result.getCurrent(), result.getSize(), result.getTotal(), result.getPages(), records);
     }
 
     @Override
     public Long createLocation(LocationBo bo) {
+        validateAreaBelongsWarehouse(bo.getWarehouseId(), bo.getAreaId());
         Location location = MapstructUtils.convert(bo, Location.class);
         if (location.getStatus() == null) {
             location.setStatus(0);
@@ -87,6 +94,7 @@ public class LocationServiceImpl extends ServiceImpl<LocationMapper, Location>
         if (Objects.isNull(exists)) {
             throw new RuntimeException("库位不存在");
         }
+        validateAreaBelongsWarehouse(bo.getWarehouseId(), bo.getAreaId());
         Location location = MapstructUtils.convert(bo, Location.class);
         location.setLocationCode(null);
         return updateById(location);
@@ -102,7 +110,7 @@ public class LocationServiceImpl extends ServiceImpl<LocationMapper, Location>
      *
      * @param records 库位列表
      */
-    private void fillWarehouseDisplay(List<LocationVo> records) {
+    private void fillDisplayFields(List<LocationVo> records) {
         if (records == null || records.isEmpty()) {
             return;
         }
@@ -111,20 +119,51 @@ public class LocationServiceImpl extends ServiceImpl<LocationMapper, Location>
                 .map(LocationVo::getWarehouseId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        if (warehouseIds.isEmpty()) {
-            return;
-        }
+        Set<Long> areaIds = records.stream()
+                .map(LocationVo::getAreaId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-        Map<Long, Warehouse> warehouseMap = warehouseMapper.selectByIds(warehouseIds).stream()
+        Map<Long, Warehouse> warehouseMap = warehouseIds.isEmpty()
+                ? Map.of()
+                : warehouseMapper.selectByIds(warehouseIds).stream()
                 .collect(Collectors.toMap(Warehouse::getId, warehouse -> warehouse, (left, right) -> left));
+        Map<Long, Area> areaMap = areaIds.isEmpty()
+                ? Map.of()
+                : areaMapper.selectByIds(areaIds).stream()
+                .collect(Collectors.toMap(Area::getId, area -> area, (left, right) -> left));
 
         for (LocationVo record : records) {
             Warehouse warehouse = warehouseMap.get(record.getWarehouseId());
-            if (warehouse == null) {
-                continue;
+            if (warehouse != null) {
+                record.setWarehouseCode(warehouse.getWarehouseCode());
+                record.setWarehouseName(warehouse.getWarehouseName());
             }
-            record.setWarehouseCode(warehouse.getWarehouseCode());
-            record.setWarehouseName(warehouse.getWarehouseName());
+            Area area = areaMap.get(record.getAreaId());
+            if (area != null) {
+                record.setAreaCode(area.getAreaCode());
+                record.setAreaName(area.getAreaName());
+            }
+        }
+    }
+
+    private void validateAreaBelongsWarehouse(Long warehouseId, Long areaId) {
+        if (warehouseId == null) {
+            throw new RuntimeException("仓库不能为空");
+        }
+        if (areaId == null) {
+            throw new RuntimeException("区域不能为空");
+        }
+        Warehouse warehouse = warehouseMapper.selectById(warehouseId);
+        if (warehouse == null) {
+            throw new RuntimeException("仓库不存在");
+        }
+        Area area = areaMapper.selectById(areaId);
+        if (area == null) {
+            throw new RuntimeException("区域不存在");
+        }
+        if (!Objects.equals(area.getWarehouseId(), warehouseId)) {
+            throw new RuntimeException("区域不属于当前仓库");
         }
     }
 

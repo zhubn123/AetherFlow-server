@@ -15,10 +15,12 @@ import com.berlin.aetherflow.wms.domain.bo.InboundOrderActionBo;
 import com.berlin.aetherflow.wms.domain.bo.InboundOrderBo;
 import com.berlin.aetherflow.wms.domain.bo.InboundOrderItemBo;
 import com.berlin.aetherflow.wms.domain.entity.InboundOrder;
+import com.berlin.aetherflow.wms.domain.entity.Location;
 import com.berlin.aetherflow.wms.domain.entity.Warehouse;
 import com.berlin.aetherflow.wms.domain.query.InboundOrderQuery;
 import com.berlin.aetherflow.wms.domain.vo.InboundOrderVo;
 import com.berlin.aetherflow.wms.mapper.InboundOrderMapper;
+import com.berlin.aetherflow.wms.mapper.LocationMapper;
 import com.berlin.aetherflow.wms.mapper.WarehouseMapper;
 import com.berlin.aetherflow.wms.service.InboundOrderItemService;
 import com.berlin.aetherflow.wms.service.InboundOrderService;
@@ -49,6 +51,7 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
     private final InboundOrderMapper inboundOrderMapper;
     private final InboundOrderItemService inboundOrderItemService;
     private final WarehouseMapper warehouseMapper;
+    private final LocationMapper locationMapper;
 
     /**
      * 分页查询入库单
@@ -68,6 +71,12 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
                 .ge(query.getInboundStartTime() != null, InboundOrder::getInboundTime, query.getInboundStartTime())
                 .le(query.getInboundEndTime() != null, InboundOrder::getInboundTime, query.getInboundEndTime())
                 .like(StringUtils.isNotBlank(query.getRemark()), InboundOrder::getRemark, query.getRemark());
+        if (query.getAreaId() != null) {
+            lqw.inSql(InboundOrder::getId,
+                    "select distinct i.order_id from inbound_order_item i " +
+                            "join location l on i.location_id = l.id " +
+                            "where l.area_id = " + query.getAreaId());
+        }
 
         IPage<InboundOrder> result = inboundOrderMapper.selectPage(page, lqw);
         List<InboundOrderVo> records = result.getRecords().stream()
@@ -94,6 +103,7 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
 
         // 生成入库单详情
         List<InboundOrderItemBo> itemsBo = normalizeOrderItems(order.getId(), bo.getOrderItemsBo());
+        validateOrderItemLocations(order.getWarehouseId(), itemsBo);
         inboundOrderItemService.saveInboundOrderItems(itemsBo);
 
         return order.getId();
@@ -124,6 +134,8 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
 
         if (bo.getOrderItemsBo() != null) {
             List<InboundOrderItemBo> normalizedItems = normalizeOrderItems(bo.getId(), bo.getOrderItemsBo());
+            Long warehouseIdForValidation = toUpdate.getWarehouseId() != null ? toUpdate.getWarehouseId() : order.getWarehouseId();
+            validateOrderItemLocations(warehouseIdForValidation, normalizedItems);
             inboundOrderItemService.replaceInboundOrderItems(bo.getId(), normalizedItems);
         }
         return true;
@@ -202,6 +214,30 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
         return normalizedItems;
     }
 
+    private void validateOrderItemLocations(Long warehouseId, List<InboundOrderItemBo> items) {
+        if (warehouseId == null || items == null || items.isEmpty()) {
+            return;
+        }
+        Set<Long> locationIds = items.stream()
+                .map(InboundOrderItemBo::getLocationId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (locationIds.isEmpty()) {
+            return;
+        }
+        Map<Long, Location> locationMap = locationMapper.selectByIds(locationIds).stream()
+                .collect(Collectors.toMap(Location::getId, location -> location, (left, right) -> left));
+        for (Long locationId : locationIds) {
+            Location location = locationMap.get(locationId);
+            if (location == null) {
+                throw new RuntimeException("入库单明细存在无效库位: " + locationId);
+            }
+            if (!Objects.equals(location.getWarehouseId(), warehouseId)) {
+                throw new RuntimeException("入库单明细库位不属于当前仓库: " + location.getLocationCode());
+            }
+        }
+    }
+
     /**
      * 填充入库单列表的仓库展示字段（编码、名称）。
      *
@@ -233,5 +269,3 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
         }
     }
 }
-
-

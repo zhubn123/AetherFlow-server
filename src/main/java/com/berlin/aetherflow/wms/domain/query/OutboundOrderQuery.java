@@ -26,6 +26,11 @@ public class OutboundOrderQuery extends PageQuery {
     private Long warehouseId;
 
     /**
+     * 区域ID（基于明细库位过滤）。
+     */
+    private Long areaId;
+
+    /**
      * 状态（0草稿 1已确认）。
      */
     private Integer status;

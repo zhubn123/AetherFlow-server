@@ -1,20 +1,20 @@
 package com.berlin.aetherflow.wms.domain.bo;
 
 import com.berlin.aetherflow.common.BaseEntity;
-import com.berlin.aetherflow.wms.domain.entity.Location;
+import com.berlin.aetherflow.wms.domain.entity.Area;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 /**
- * 库位实体。
+ * 区域业务对象。
  */
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@AutoMapper(target = Location.class, reverseConvertGenerate = false)
-public class LocationBo extends BaseEntity {
+@AutoMapper(target = Area.class, reverseConvertGenerate = false)
+public class AreaBo extends BaseEntity {
 
     private Long id;
 
@@ -24,22 +24,22 @@ public class LocationBo extends BaseEntity {
     private Long warehouseId;
 
     /**
-     * 所属区域ID。
+     * 区域编码。
      */
-    private Long areaId;
+    private String areaCode;
 
     /**
-     * 库位编码。
+     * 区域名称。
      */
-    private String locationCode;
+    private String areaName;
 
     /**
-     * 库位名称。
+     * 区域类型。
      */
-    private String locationName;
+    private String areaType;
 
     /**
-     * 库位状态（0正常 1停用）。
+     * 状态（0正常 1停用）。
      */
     private Integer status;
 

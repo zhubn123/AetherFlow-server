@@ -326,3 +326,63 @@ on duplicate key update
     locked_quantity = values(locked_quantity),
     update_by = values(update_by),
     update_time = values(update_time);
+
+-- =============================================
+-- 变更记录（2026-04-22）：引入区域模型（warehouse -> area -> location）
+-- 变更原因：
+-- 1) 当前仅有仓库与库位，缺少区域层，无法表达收货区/质检区/存储区等业务分区
+-- 2) 支撑主数据联动口径：仓库 -> 区域 -> 库位，避免单据页跨仓跨区误选
+-- 3) 为后续空间可视化与流程分区扩展提供结构基础
+-- =============================================
+
+-- 区域表
+create table if not exists area
+(
+    id            bigint primary key comment '主键ID',
+    warehouse_id  bigint       not null comment '所属仓库ID',
+    area_code     varchar(32)  not null comment '区域编码',
+    area_name     varchar(64)  not null comment '区域名称',
+    area_type     varchar(32)  null comment '区域类型',
+    status        tinyint      not null default 0 comment '状态（0正常 1停用）',
+    remark        varchar(255) not null default '' comment '备注',
+    create_by     varchar(64)  not null default '' comment '创建人',
+    create_time   datetime     not null default CURRENT_TIMESTAMP comment '创建时间',
+    update_by     varchar(64)  not null default '' comment '更新人',
+    update_time   datetime     not null default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP comment '更新时间',
+    unique key uk_area_warehouse_code (warehouse_id, area_code),
+    key idx_area_warehouse_id (warehouse_id)
+) engine = InnoDB comment '区域表'
+  collate = utf8mb4_unicode_ci;
+
+-- 区域测试数据
+insert into area (id, warehouse_id, area_code, area_name, area_type, status, remark, create_by, create_time, update_by, update_time)
+values (2000000000000000151, 2000000000000000001, 'AR-GZ-REC', '广州收货区', 'RECEIVING', 0, '广州仓收货作业区', 'seed', now(), 'seed', now()),
+       (2000000000000000152, 2000000000000000001, 'AR-GZ-STO', '广州存储区', 'STORAGE', 0, '广州仓标准存储区', 'seed', now(), 'seed', now()),
+       (2000000000000000153, 2000000000000000002, 'AR-SH-STO', '上海存储区', 'STORAGE', 0, '上海仓标准存储区', 'seed', now(), 'seed', now()),
+       (2000000000000000154, 2000000000000000002, 'AR-SH-QA', '上海质检区', 'QUALITY', 0, '上海仓质检区', 'seed', now(), 'seed', now()),
+       (2000000000000000155, 2000000000000000003, 'AR-BJ-DIS', '北京停用区', 'DISABLED', 1, '停用仓示例区域', 'seed', now(), 'seed', now())
+on duplicate key update
+    warehouse_id = values(warehouse_id),
+    area_name = values(area_name),
+    area_type = values(area_type),
+    status = values(status),
+    remark = values(remark),
+    update_by = values(update_by),
+    update_time = values(update_time);
+
+alter table location
+    add column area_id bigint null comment '所属区域ID' after warehouse_id;
+
+update location
+set area_id = case
+                  when warehouse_id = 2000000000000000001 and location_code in ('L-GZ-A-01', 'L-GZ-A-02') then 2000000000000000152
+                  when warehouse_id = 2000000000000000002 and location_code = 'L-SH-B-01' then 2000000000000000153
+                  when warehouse_id = 2000000000000000002 and location_code = 'L-SH-B-02' then 2000000000000000154
+                  else area_id
+    end
+where area_id is null;
+
+alter table location
+    modify column area_id bigint not null comment '所属区域ID',
+    add key idx_location_area_id (area_id),
+    add unique key uk_location_area_code (area_id, location_code);

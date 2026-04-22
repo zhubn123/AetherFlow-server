@@ -26,6 +26,12 @@ public interface BizCodeTypeConst {
     String WAREHOUSE = "WH";
 
     /**
+     * 区域编码 - AREA
+     * 用于标识仓库内的业务分区（收货区/质检区/存储区等）
+     */
+    String AREA = "AR";
+
+    /**
      * 库位编码 - LOCATION
      * 用于标识仓库内的具体存储位置
      */

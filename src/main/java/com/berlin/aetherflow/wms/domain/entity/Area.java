@@ -1,6 +1,10 @@
 package com.berlin.aetherflow.wms.domain.entity;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.berlin.aetherflow.common.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -10,13 +14,13 @@ import java.io.Serial;
 import java.io.Serializable;
 
 /**
- * 库位实体。
+ * 区域实体。
  */
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@TableName("location")
-public class Location extends BaseEntity implements Serializable {
+@TableName("area")
+public class Area extends BaseEntity implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -30,23 +34,23 @@ public class Location extends BaseEntity implements Serializable {
     private Long warehouseId;
 
     /**
-     * 所属区域ID。
-     */
-    private Long areaId;
-
-    /**
-     * 库位编码。
+     * 区域编码。
      */
     @TableField(updateStrategy = FieldStrategy.NEVER)
-    private String locationCode;
+    private String areaCode;
 
     /**
-     * 库位名称。
+     * 区域名称。
      */
-    private String locationName;
+    private String areaName;
 
     /**
-     * 库位状态（0正常 1停用）。
+     * 区域类型。
+     */
+    private String areaType;
+
+    /**
+     * 状态（0正常 1停用）。
      */
     private Integer status;
 

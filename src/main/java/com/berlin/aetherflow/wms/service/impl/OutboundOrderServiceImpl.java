@@ -14,10 +14,12 @@ import com.berlin.aetherflow.wms.constant.OrderStatusConst;
 import com.berlin.aetherflow.wms.domain.bo.OutboundOrderActionBo;
 import com.berlin.aetherflow.wms.domain.bo.OutboundOrderBo;
 import com.berlin.aetherflow.wms.domain.bo.OutboundOrderItemBo;
+import com.berlin.aetherflow.wms.domain.entity.Location;
 import com.berlin.aetherflow.wms.domain.entity.OutboundOrder;
 import com.berlin.aetherflow.wms.domain.entity.Warehouse;
 import com.berlin.aetherflow.wms.domain.query.OutboundOrderQuery;
 import com.berlin.aetherflow.wms.domain.vo.OutboundOrderVo;
+import com.berlin.aetherflow.wms.mapper.LocationMapper;
 import com.berlin.aetherflow.wms.mapper.OutboundOrderMapper;
 import com.berlin.aetherflow.wms.mapper.WarehouseMapper;
 import com.berlin.aetherflow.wms.service.OutboundOrderItemService;
@@ -49,6 +51,7 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
     private final OutboundOrderMapper outboundOrderMapper;
     private final OutboundOrderItemService outboundOrderItemService;
     private final WarehouseMapper warehouseMapper;
+    private final LocationMapper locationMapper;
 
     /**
      * 分页查询出库单
@@ -68,6 +71,12 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
                 .ge(query.getOutboundStartTime() != null, OutboundOrder::getOutboundTime, query.getOutboundStartTime())
                 .le(query.getOutboundEndTime() != null, OutboundOrder::getOutboundTime, query.getOutboundEndTime())
                 .like(StringUtils.isNotBlank(query.getRemark()), OutboundOrder::getRemark, query.getRemark());
+        if (query.getAreaId() != null) {
+            lqw.inSql(OutboundOrder::getId,
+                    "select distinct i.order_id from outbound_order_item i " +
+                            "join location l on i.location_id = l.id " +
+                            "where l.area_id = " + query.getAreaId());
+        }
 
         IPage<OutboundOrder> result = outboundOrderMapper.selectPage(page, lqw);
         List<OutboundOrderVo> records = result.getRecords().stream()
@@ -91,6 +100,7 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
         outboundOrderMapper.insert(order);
 
         List<OutboundOrderItemBo> itemsBo = normalizeOrderItems(order.getId(), bo.getOrderItemsBo());
+        validateOrderItemLocations(order.getWarehouseId(), itemsBo);
         outboundOrderItemService.saveOutboundOrderItems(itemsBo);
         return order.getId();
     }
@@ -120,6 +130,8 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
 
         if (bo.getOrderItemsBo() != null) {
             List<OutboundOrderItemBo> normalizedItems = normalizeOrderItems(bo.getId(), bo.getOrderItemsBo());
+            Long warehouseIdForValidation = toUpdate.getWarehouseId() != null ? toUpdate.getWarehouseId() : order.getWarehouseId();
+            validateOrderItemLocations(warehouseIdForValidation, normalizedItems);
             outboundOrderItemService.replaceOutboundOrderItems(bo.getId(), normalizedItems);
         }
         return true;
@@ -196,6 +208,30 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
             throw new RuntimeException("出库单明细不能为空");
         }
         return normalizedItems;
+    }
+
+    private void validateOrderItemLocations(Long warehouseId, List<OutboundOrderItemBo> items) {
+        if (warehouseId == null || items == null || items.isEmpty()) {
+            return;
+        }
+        Set<Long> locationIds = items.stream()
+                .map(OutboundOrderItemBo::getLocationId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (locationIds.isEmpty()) {
+            return;
+        }
+        Map<Long, Location> locationMap = locationMapper.selectByIds(locationIds).stream()
+                .collect(Collectors.toMap(Location::getId, location -> location, (left, right) -> left));
+        for (Long locationId : locationIds) {
+            Location location = locationMap.get(locationId);
+            if (location == null) {
+                throw new RuntimeException("出库单明细存在无效库位: " + locationId);
+            }
+            if (!Objects.equals(location.getWarehouseId(), warehouseId)) {
+                throw new RuntimeException("出库单明细库位不属于当前仓库: " + location.getLocationCode());
+            }
+        }
     }
 
     /**

@@ -29,6 +29,11 @@ public class InventoryQuery extends PageQuery {
     private Long locationId;
 
     /**
+     * 区域ID。
+     */
+    private Long areaId;
+
+    /**
      * 物料ID。
      */
     private Long materialId;

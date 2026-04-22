@@ -7,6 +7,7 @@
     <resultMap id="BaseResultMap" type="com.berlin.aetherflow.wms.domain.entity.Location">
             <id property="id" column="id" jdbcType="BIGINT"/>
             <result property="warehouseId" column="warehouse_id" jdbcType="BIGINT"/>
+            <result property="areaId" column="area_id" jdbcType="BIGINT"/>
             <result property="locationCode" column="location_code" jdbcType="VARCHAR"/>
             <result property="locationName" column="location_name" jdbcType="VARCHAR"/>
             <result property="status" column="status" jdbcType="TINYINT"/>
@@ -18,8 +19,8 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,warehouse_id,location_code,
-        location_name,status,remark,
+        id,warehouse_id,area_id,
+        location_code,location_name,status,remark,
         create_by,create_time,update_by,
         update_time
     </sql>

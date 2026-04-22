@@ -41,6 +41,21 @@ public class InventoryVo extends BaseEntity {
     private Long locationId;
 
     /**
+     * 区域ID。
+     */
+    private Long areaId;
+
+    /**
+     * 区域编码。
+     */
+    private String areaCode;
+
+    /**
+     * 区域名称。
+     */
+    private String areaName;
+
+    /**
      * 库位编码。
      */
     private String locationCode;
