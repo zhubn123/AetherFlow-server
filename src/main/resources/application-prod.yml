@@ -1,0 +1,11 @@
+sa-token:
+  is-log: false
+
+mybatis:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+logging:
+  level:
+    root: warn
+    com.berlin.aetherflow: info
