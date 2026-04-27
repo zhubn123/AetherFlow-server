@@ -18,6 +18,10 @@ databaseChangeLog:
       relativeToChangelogFile: false
 
   - include:
+      file: db/changelog/sql/20260427-004-wms-demo-seed.sql
+      relativeToChangelogFile: false
+
+  - include:
       file: db/changelog/sql/20260427-001-user-domain-base.sql
       relativeToChangelogFile: false
 
