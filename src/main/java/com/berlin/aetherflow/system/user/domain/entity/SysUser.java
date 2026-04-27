@@ -11,15 +11,16 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
 /**
- * 与当前数据库脚本对应的用户实体。
+ * 系统用户实体（用户域升级模型）。
  */
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@TableName("user")
-public class User extends BaseEntity implements Serializable {
+@TableName("sys_user")
+public class SysUser extends BaseEntity implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -31,38 +32,48 @@ public class User extends BaseEntity implements Serializable {
     private Long id;
 
     /**
-     * 用户名
+     * 登录用户名
      */
     private String username;
 
     /**
-     * 登录密码
+     * 密码哈希
      */
     @JsonIgnore
-    private String password;
+    private String passwordHash;
 
     /**
      * 用户昵称
      */
-    private String name;
+    private String nickname;
 
     /**
-     * 用户头像
+     * 邮箱
      */
-    private String avatar;
+    private String email;
 
     /**
-     * 用户简介
+     * 手机号
      */
-    private String profile;
+    private String phone;
 
     /**
-     * 用户角色
-     */
-    private String role;
-
-    /**
-     * 账号状态，0=正常，1=停用
+     * 状态（0正常 1停用 2锁定）
      */
     private Integer status;
+
+    /**
+     * 连续登录失败次数
+     */
+    private Integer loginFailCount;
+
+    /**
+     * 锁定截止时间
+     */
+    private LocalDateTime lockUntil;
+
+    /**
+     * 最后登录时间
+     */
+    private LocalDateTime lastLoginTime;
 }

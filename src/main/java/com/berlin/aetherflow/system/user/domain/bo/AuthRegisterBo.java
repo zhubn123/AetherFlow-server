@@ -6,13 +6,10 @@ import java.io.Serial;
 import java.io.Serializable;
 
 /**
- * LoginUser
- *
- * @author zhubn
- * @date 2026/4/18
+ * 注册参数。
  */
 @Data
-public class LoginUser implements Serializable {
+public class AuthRegisterBo implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -23,7 +20,22 @@ public class LoginUser implements Serializable {
     private String username;
 
     /**
-     * 密码
+     * 密码（明文，仅用于注册时接收并加密存储）
      */
     private String password;
+
+    /**
+     * 邮箱
+     */
+    private String email;
+
+    /**
+     * 昵称
+     */
+    private String nickname;
+
+    /**
+     * 手机号
+     */
+    private String phone;
 }

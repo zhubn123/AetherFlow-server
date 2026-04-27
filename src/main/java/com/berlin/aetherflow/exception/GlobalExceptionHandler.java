@@ -10,6 +10,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(ApiException.class)
+    public Result<?> handleApiException(ApiException e, HttpServletRequest request) {
+        log.warn("请求路径：{}，业务异常：{}", request.getRequestURI(), e.getMessage());
+        return Result.fail(e.getCode(), e.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public Result<?> handleException(Exception e, HttpServletRequest request) {
         log.error("请求路径：{}", request.getRequestURI(), e);

@@ -386,3 +386,123 @@ alter table location
     modify column area_id bigint not null comment '所属区域ID',
     add key idx_location_area_id (area_id),
     add unique key uk_location_area_code (area_id, location_code);
+
+-- =============================================
+-- 变更记录（2026-04-27）：用户域模型升级（user -> sys_user + sys_role + sys_user_role）
+-- 变更原因：
+-- 1) 原 user 表采用单字段 role，难以支持后续 RBAC 扩展与多角色能力
+-- 2) 将账号主体、角色定义、用户角色关系解耦，形成稳定基础设施模型
+-- 3) 为后续认证接口统一返回 token + userInfo + roles 提供标准化数据结构
+-- =============================================
+
+create table if not exists sys_user
+(
+    id               bigint primary key comment '主键ID',
+    username         varchar(64)  not null comment '登录用户名',
+    password_hash    varchar(255) not null comment '密码哈希',
+    nickname         varchar(64)  not null default '' comment '用户昵称',
+    email            varchar(128) null comment '邮箱',
+    phone            varchar(32)  null comment '手机号',
+    status           tinyint      not null default 0 comment '状态（0正常 1停用 2锁定）',
+    login_fail_count int          not null default 0 comment '连续登录失败次数',
+    lock_until       datetime     null comment '锁定截止时间',
+    last_login_time  datetime     null comment '最后登录时间',
+    create_by        varchar(64)  not null default '' comment '创建人',
+    create_time      datetime     not null default CURRENT_TIMESTAMP comment '创建时间',
+    update_by        varchar(64)  not null default '' comment '更新人',
+    update_time      datetime     not null default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP comment '更新时间',
+    unique key uk_sys_user_username (username),
+    unique key uk_sys_user_email (email)
+) engine = InnoDB comment '系统用户表'
+  collate = utf8mb4_unicode_ci;
+
+create table if not exists sys_role
+(
+    id          bigint primary key comment '主键ID',
+    role_key    varchar(64)  not null comment '角色标识（如 admin/operator/viewer）',
+    role_name   varchar(64)  not null comment '角色名称',
+    status      tinyint      not null default 0 comment '状态（0正常 1停用）',
+    remark      varchar(255) not null default '' comment '备注',
+    create_by   varchar(64)  not null default '' comment '创建人',
+    create_time datetime     not null default CURRENT_TIMESTAMP comment '创建时间',
+    update_by   varchar(64)  not null default '' comment '更新人',
+    update_time datetime     not null default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP comment '更新时间',
+    unique key uk_sys_role_key (role_key)
+) engine = InnoDB comment '系统角色表'
+  collate = utf8mb4_unicode_ci;
+
+create table if not exists sys_user_role
+(
+    id          bigint primary key comment '主键ID',
+    user_id     bigint      not null comment '用户ID',
+    role_id     bigint      not null comment '角色ID',
+    create_by   varchar(64) not null default '' comment '创建人',
+    create_time datetime    not null default CURRENT_TIMESTAMP comment '创建时间',
+    update_by   varchar(64) not null default '' comment '更新人',
+    update_time datetime    not null default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP comment '更新时间',
+    unique key uk_sys_user_role (user_id, role_id),
+    key idx_sys_user_role_user_id (user_id),
+    key idx_sys_user_role_role_id (role_id)
+) engine = InnoDB comment '用户角色关联表'
+  collate = utf8mb4_unicode_ci;
+
+-- 初始化角色基线数据
+insert into sys_role (id, role_key, role_name, status, remark, create_by, create_time, update_by, update_time)
+values (1930000000000000001, 'admin', '系统管理员', 0, '系统内置角色', 'seed', now(), 'seed', now()),
+       (1930000000000000002, 'operator', '业务操作员', 0, '系统内置角色', 'seed', now(), 'seed', now()),
+       (1930000000000000003, 'viewer', '只读访客', 0, '系统内置角色', 'seed', now(), 'seed', now())
+on duplicate key update
+    role_name = values(role_name),
+    status = values(status),
+    remark = values(remark),
+    update_by = values(update_by),
+    update_time = values(update_time);
+
+-- 初始化管理员账号基线数据（与现有登录口令保持一致，后续 A006-2 迁移登录逻辑时可直接复用）
+insert into sys_user (id, username, password_hash, nickname, email, phone, status, login_fail_count, lock_until, last_login_time,
+                      create_by, create_time, update_by, update_time)
+values (1930000000000000101, 'admin', '$2a$10$Ziw/AnOoKNlnpj3J0.N.SO07DQlU8KhlBx9gtNNgDbqPWHJ/kgErS',
+        '管理员', 'admin@example.com', null, 0, 0, null, now(), 'seed', now(), 'seed', now())
+on duplicate key update
+    password_hash = values(password_hash),
+    nickname = values(nickname),
+    email = values(email),
+    status = values(status),
+    update_by = values(update_by),
+    update_time = values(update_time);
+
+insert into sys_user_role (id, user_id, role_id, create_by, create_time, update_by, update_time)
+values (1930000000000000201, 1930000000000000101, 1930000000000000001, 'seed', now(), 'seed', now())
+on duplicate key update
+    update_by = values(update_by),
+    update_time = values(update_time);
+
+-- =============================================
+-- 变更记录（2026-04-27）：用户域安全审计能力（A006-3）
+-- 变更原因：
+-- 1) 对登录、资料修改、密码修改等关键安全行为进行持久化留痕
+-- 2) 满足“可追溯”验收口径（操作者、时间、结果、请求来源）
+-- 3) 为后续安全分析与告警策略提供基础数据
+-- =============================================
+
+create table if not exists sys_audit_log
+(
+    id          bigint primary key comment '主键ID',
+    user_id     bigint       null comment '用户ID（匿名事件可空）',
+    username    varchar(64)  null comment '用户名（匿名事件可空）',
+    event_type  varchar(32)  not null comment '事件类型（LOGIN/PROFILE/PASSWORD）',
+    event_name  varchar(64)  not null comment '事件名称',
+    request_uri varchar(255) null comment '请求路径',
+    client_ip   varchar(64)  null comment '客户端IP',
+    result      tinyint      not null default 0 comment '执行结果（1成功 0失败）',
+    message     varchar(255) null comment '结果消息',
+    occur_time  datetime     not null default CURRENT_TIMESTAMP comment '事件发生时间',
+    create_by   varchar(64)  not null default '' comment '创建人',
+    create_time datetime     not null default CURRENT_TIMESTAMP comment '创建时间',
+    update_by   varchar(64)  not null default '' comment '更新人',
+    update_time datetime     not null default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP comment '更新时间',
+    key idx_sys_audit_log_user_id (user_id),
+    key idx_sys_audit_log_event_type (event_type),
+    key idx_sys_audit_log_occur_time (occur_time)
+) engine = InnoDB comment '系统安全审计日志表'
+  collate = utf8mb4_unicode_ci;
