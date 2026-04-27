@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.berlin.aetherflow.common.PageResult;
 import com.berlin.aetherflow.common.utils.CodeGenerate;
 import com.berlin.aetherflow.common.utils.MapstructUtils;
 import com.berlin.aetherflow.common.utils.OrderUtil;
@@ -41,7 +42,7 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
     }
 
     @Override
-    public List<WarehouseVo> queryList(WarehouseQuery query) {
+    public PageResult<WarehouseVo> queryList(WarehouseQuery query) {
 
         IPage<Warehouse> page = new Page<>(query.getPageNo(), query.getPageSize());
         OrderUtil.addOrder(page, query.getSortBy(), query.getIsAsc());
@@ -54,7 +55,10 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
             lqw.like(Warehouse::getWarehouseName, query.getWarehouseName());
         }
         IPage<Warehouse> result = warehouseMapper.selectPage(page, lqw);
-        return result.getRecords().stream().map(e -> MapstructUtils.convert(e, WarehouseVo.class)).toList();
+        List<WarehouseVo> records = result.getRecords().stream()
+                .map(e -> MapstructUtils.convert(e, WarehouseVo.class))
+                .toList();
+        return PageResult.of(result.getCurrent(), result.getSize(), result.getTotal(), result.getPages(), records);
     }
 
     @Override

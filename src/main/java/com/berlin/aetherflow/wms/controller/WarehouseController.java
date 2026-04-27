@@ -1,5 +1,6 @@
 package com.berlin.aetherflow.wms.controller;
 
+import com.berlin.aetherflow.common.PageResult;
 import com.berlin.aetherflow.common.utils.MapstructUtils;
 import com.berlin.aetherflow.exception.Result;
 import com.berlin.aetherflow.wms.domain.query.WarehouseQuery;
@@ -36,7 +37,7 @@ public class WarehouseController {
 
     @Operation(summary = "分页查询")
     @PostMapping("/page")
-    public Result<List<WarehouseVo>> list(@RequestBody WarehouseQuery query){
+    public Result<PageResult<WarehouseVo>> list(@RequestBody WarehouseQuery query){
         return Result.success(warehouseService.queryList(query));
     }
 
