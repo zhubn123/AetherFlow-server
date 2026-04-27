@@ -1,6 +1,7 @@
 package com.berlin.aetherflow.system.user.service;
 
 import com.berlin.aetherflow.system.user.domain.bo.AuthLoginBo;
+import com.berlin.aetherflow.system.user.domain.bo.AuthRefreshBo;
 import com.berlin.aetherflow.system.user.domain.bo.AuthRegisterBo;
 import com.berlin.aetherflow.system.user.domain.vo.AuthLoginVo;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,6 +29,15 @@ public interface AuthService {
      * @return 登录响应
      */
     AuthLoginVo login(AuthLoginBo bo, HttpServletRequest request);
+
+    /**
+     * 刷新登录令牌。
+     *
+     * @param bo      刷新参数
+     * @param request 请求对象
+     * @return 新登录响应
+     */
+    AuthLoginVo refresh(AuthRefreshBo bo, HttpServletRequest request);
 
     /**
      * 用户登出。

@@ -2,6 +2,7 @@ package com.berlin.aetherflow.system.user.controller;
 
 import com.berlin.aetherflow.exception.Result;
 import com.berlin.aetherflow.system.user.domain.bo.AuthLoginBo;
+import com.berlin.aetherflow.system.user.domain.bo.AuthRefreshBo;
 import com.berlin.aetherflow.system.user.domain.bo.AuthRegisterBo;
 import com.berlin.aetherflow.system.user.domain.vo.AuthLoginVo;
 import com.berlin.aetherflow.system.user.service.AuthService;
@@ -30,6 +31,12 @@ public class AuthController {
     @PostMapping("/login")
     public Result<AuthLoginVo> login(@RequestBody AuthLoginBo bo, HttpServletRequest request) {
         return Result.success(authService.login(bo, request));
+    }
+
+    @Operation(summary = "刷新登录令牌")
+    @PostMapping("/refresh")
+    public Result<AuthLoginVo> refresh(@RequestBody AuthRefreshBo bo, HttpServletRequest request) {
+        return Result.success(authService.refresh(bo, request));
     }
 
     @Operation(summary = "用户登出")

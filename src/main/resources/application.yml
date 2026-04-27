@@ -12,6 +12,12 @@ spring:
     url: ${DB_URL:${local.datasource.url}}
     username: ${DB_USERNAME:${local.datasource.username}}
     password: ${DB_PASSWORD:${local.datasource.password}}
+  liquibase:
+    enabled: true
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+    # 首次接入老库时使用“前置校验 + 幂等 SQL”，避免破坏现网数据
+    clear-checksums: false
+    drop-first: false
 
 ############## Sa-Token 配置 (文档: https://sa-token.cc) ##############
 sa-token:
@@ -31,6 +37,13 @@ sa-token:
   token-style: uuid
   # 是否输出操作日志
   is-log: true
+
+aether-flow:
+  auth:
+    refresh-token:
+      # 无状态 refresh token 签名密钥，生产环境请通过环境变量覆盖
+      secret: ${AUTH_REFRESH_TOKEN_SECRET:aether-flow-local-refresh-secret}
+      ttl-seconds: ${AUTH_REFRESH_TOKEN_TTL_SECONDS:604800}
 
 mybatis:
   mapper-locations: classpath*:mapper/**/*.xml

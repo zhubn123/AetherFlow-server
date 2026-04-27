@@ -26,6 +26,7 @@ public class SaTokenConfig implements WebMvcConfigurer {
                     .notMatch(
                             "/api/auth/login",
                             "/api/auth/register",
+                            "/api/auth/refresh",
                             "/api/health",
                             "/v3/api-docs",
                             "/v3/api-docs/**",

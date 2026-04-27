@@ -1,0 +1,293 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20260427-000a-01-drop-inbound-location-index
+      author: berlin
+      comment: 兼容早期入库单表头库位索引
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: "1"
+            sql: |
+              select count(*)
+              from information_schema.statistics
+              where table_schema = database()
+                and table_name = 'inbound_order'
+                and index_name = 'idx_inbound_location_id'
+      changes:
+        - sql:
+            sql: alter table inbound_order drop index idx_inbound_location_id;
+
+  - changeSet:
+      id: 20260427-000a-02-drop-inbound-location-column
+      author: berlin
+      comment: 兼容早期入库单表头库位字段
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: "1"
+            sql: |
+              select count(*)
+              from information_schema.columns
+              where table_schema = database()
+                and table_name = 'inbound_order'
+                and column_name = 'location_id'
+      changes:
+        - sql:
+            sql: alter table inbound_order drop column location_id;
+
+  - changeSet:
+      id: 20260427-000a-03-drop-inbound-total-qty
+      author: berlin
+      comment: 兼容早期入库单表头总数字段
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: "1"
+            sql: |
+              select count(*)
+              from information_schema.columns
+              where table_schema = database()
+                and table_name = 'inbound_order'
+                and column_name = 'total_qty'
+      changes:
+        - sql:
+            sql: alter table inbound_order drop column total_qty;
+
+  - changeSet:
+      id: 20260427-000a-04-fix-inbound-time-nullable
+      author: berlin
+      comment: 入库时间改为可空以支持草稿
+      changes:
+        - sql:
+            sql: alter table inbound_order modify column inbound_time datetime null comment '实际入库时间';
+
+  - changeSet:
+      id: 20260427-000a-05-rename-inbound-item-qty
+      author: berlin
+      comment: 入库明细 qty 迁移为 planned_qty
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: "1"
+            sql: |
+              select count(*)
+              from information_schema.columns
+              where table_schema = database()
+                and table_name = 'inbound_order_item'
+                and column_name = 'qty'
+      changes:
+        - sql:
+            sql: alter table inbound_order_item change column qty planned_qty decimal(18, 2) not null default 0 comment '计划入库数量';
+
+  - changeSet:
+      id: 20260427-000a-06-fix-inbound-item-columns
+      author: berlin
+      comment: 入库明细补齐 line_no/location_id/received_qty
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: "0"
+            sql: |
+              select count(*)
+              from information_schema.columns
+              where table_schema = database()
+                and table_name = 'inbound_order_item'
+                and column_name = 'line_no'
+      changes:
+        - sql:
+            sql: alter table inbound_order_item add column line_no int not null default 1 comment '行号';
+
+  - changeSet:
+      id: 20260427-000a-06b-fix-inbound-item-location-id
+      author: berlin
+      comment: 入库明细补齐 location_id
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: "0"
+            sql: |
+              select count(*)
+              from information_schema.columns
+              where table_schema = database()
+                and table_name = 'inbound_order_item'
+                and column_name = 'location_id'
+      changes:
+        - sql:
+            sql: alter table inbound_order_item add column location_id bigint null comment '目标库位ID';
+
+  - changeSet:
+      id: 20260427-000a-06c-fix-inbound-item-received-qty
+      author: berlin
+      comment: 入库明细补齐 received_qty
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: "0"
+            sql: |
+              select count(*)
+              from information_schema.columns
+              where table_schema = database()
+                and table_name = 'inbound_order_item'
+                and column_name = 'received_qty'
+      changes:
+        - sql:
+            sql: alter table inbound_order_item add column received_qty decimal(18, 2) not null default 0 comment '已入库数量';
+
+  - changeSet:
+      id: 20260427-000a-07-drop-outbound-location-index
+      author: berlin
+      comment: 兼容早期出库单表头库位索引
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: "1"
+            sql: |
+              select count(*)
+              from information_schema.statistics
+              where table_schema = database()
+                and table_name = 'outbound_order'
+                and index_name = 'idx_outbound_location_id'
+      changes:
+        - sql:
+            sql: alter table outbound_order drop index idx_outbound_location_id;
+
+  - changeSet:
+      id: 20260427-000a-08-drop-outbound-location-column
+      author: berlin
+      comment: 兼容早期出库单表头库位字段
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: "1"
+            sql: |
+              select count(*)
+              from information_schema.columns
+              where table_schema = database()
+                and table_name = 'outbound_order'
+                and column_name = 'location_id'
+      changes:
+        - sql:
+            sql: alter table outbound_order drop column location_id;
+
+  - changeSet:
+      id: 20260427-000a-09-drop-outbound-total-qty
+      author: berlin
+      comment: 兼容早期出库单表头总数字段
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: "1"
+            sql: |
+              select count(*)
+              from information_schema.columns
+              where table_schema = database()
+                and table_name = 'outbound_order'
+                and column_name = 'total_qty'
+      changes:
+        - sql:
+            sql: alter table outbound_order drop column total_qty;
+
+  - changeSet:
+      id: 20260427-000a-10-rename-outbound-item-qty
+      author: berlin
+      comment: 出库明细 qty 迁移为 planned_qty
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: "1"
+            sql: |
+              select count(*)
+              from information_schema.columns
+              where table_schema = database()
+                and table_name = 'outbound_order_item'
+                and column_name = 'qty'
+      changes:
+        - sql:
+            sql: alter table outbound_order_item change column qty planned_qty decimal(18, 2) not null default 0 comment '计划出库数量';
+
+  - changeSet:
+      id: 20260427-000a-11-fix-outbound-item-columns
+      author: berlin
+      comment: 出库明细补齐 line_no/location_id/shipped_qty
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: "0"
+            sql: |
+              select count(*)
+              from information_schema.columns
+              where table_schema = database()
+                and table_name = 'outbound_order_item'
+                and column_name = 'line_no'
+      changes:
+        - sql:
+            sql: alter table outbound_order_item add column line_no int not null default 1 comment '行号';
+
+  - changeSet:
+      id: 20260427-000a-11b-fix-outbound-item-location-id
+      author: berlin
+      comment: 出库明细补齐 location_id
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: "0"
+            sql: |
+              select count(*)
+              from information_schema.columns
+              where table_schema = database()
+                and table_name = 'outbound_order_item'
+                and column_name = 'location_id'
+      changes:
+        - sql:
+            sql: alter table outbound_order_item add column location_id bigint null comment '来源库位ID';
+
+  - changeSet:
+      id: 20260427-000a-11c-fix-outbound-item-shipped-qty
+      author: berlin
+      comment: 出库明细补齐 shipped_qty
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: "0"
+            sql: |
+              select count(*)
+              from information_schema.columns
+              where table_schema = database()
+                and table_name = 'outbound_order_item'
+                and column_name = 'shipped_qty'
+      changes:
+        - sql:
+            sql: alter table outbound_order_item add column shipped_qty decimal(18, 2) not null default 0 comment '已出库数量';
+
+  - changeSet:
+      id: 20260427-000a-12-add-location-area-id
+      author: berlin
+      comment: 库位补齐区域字段
+      preConditions:
+        - onFail: MARK_RAN
+        - onError: HALT
+        - sqlCheck:
+            expectedResult: "0"
+            sql: |
+              select count(*)
+              from information_schema.columns
+              where table_schema = database()
+                and table_name = 'location'
+                and column_name = 'area_id'
+      changes:
+        - sql:
+            sql: alter table location add column area_id bigint null comment '所属区域ID';

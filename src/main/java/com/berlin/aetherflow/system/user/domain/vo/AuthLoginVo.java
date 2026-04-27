@@ -21,6 +21,11 @@ public class AuthLoginVo implements Serializable {
     private String token;
 
     /**
+     * 刷新令牌
+     */
+    private String refreshToken;
+
+    /**
      * 用户信息
      */
     private AuthUserInfoVo userInfo;

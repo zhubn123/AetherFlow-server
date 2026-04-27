@@ -5,6 +5,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.berlin.aetherflow.config.ServletUtils;
 import com.berlin.aetherflow.exception.ApiException;
 import com.berlin.aetherflow.system.user.domain.bo.AuthLoginBo;
+import com.berlin.aetherflow.system.user.domain.bo.AuthRefreshBo;
 import com.berlin.aetherflow.system.user.domain.bo.AuthRegisterBo;
 import com.berlin.aetherflow.system.user.domain.entity.SysRole;
 import com.berlin.aetherflow.system.user.domain.entity.SysUser;
@@ -17,23 +18,31 @@ import com.berlin.aetherflow.system.user.mapper.SysUserRoleMapper;
 import com.berlin.aetherflow.system.user.service.AuthService;
 import com.berlin.aetherflow.system.user.service.SecurityAuditService;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.time.Instant;
+import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * 认证与授权服务实现。
  */
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
     private static final int USER_STATUS_NORMAL = 0;
@@ -42,11 +51,19 @@ public class AuthServiceImpl implements AuthService {
     private static final int MAX_LOGIN_FAIL_COUNT = 5;
     private static final int LOCK_MINUTES = 5;
     private static final String DEFAULT_ROLE_KEY = "operator";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final String REFRESH_TOKEN_VERSION = "v1";
 
     private final SysUserMapper sysUserMapper;
     private final SysRoleMapper sysRoleMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
     private final SecurityAuditService securityAuditService;
+
+    @Value("${aether-flow.auth.refresh-token.secret:aether-flow-local-refresh-secret}")
+    private String refreshTokenSecret;
+
+    @Value("${aether-flow.auth.refresh-token.ttl-seconds:604800}")
+    private long refreshTokenTtlSeconds;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -115,10 +132,7 @@ public class AuthServiceImpl implements AuthService {
             StpUtil.login(user.getId());
             StpUtil.getTokenSession().set("operatorName", resolveOperatorName(user));
 
-            AuthLoginVo loginVo = new AuthLoginVo();
-            loginVo.setToken(StpUtil.getTokenValue());
-            loginVo.setRoles(getRoleKeysByUserId(user.getId()));
-            loginVo.setUserInfo(buildUserInfo(user));
+            AuthLoginVo loginVo = buildLoginVo(user);
 
             securityAuditService.record(
                     user.getId(),
@@ -137,6 +151,61 @@ public class AuthServiceImpl implements AuthService {
                     user == null ? username : user.getUsername(),
                     "LOGIN",
                     "USER_LOGIN",
+                    requestUri,
+                    clientIp,
+                    0,
+                    ex.getMessage()
+            );
+            throw ex;
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AuthLoginVo refresh(AuthRefreshBo bo, HttpServletRequest request) {
+        String requestUri = request == null ? null : request.getRequestURI();
+        String clientIp = request == null ? null : ServletUtils.getClientIpAddress(request);
+        String username = null;
+        Long userId = null;
+
+        try {
+            String refreshToken = normalizeRequired(bo == null ? null : bo.getRefreshToken(), "刷新令牌不能为空");
+            RefreshTokenClaims claims = parseRefreshToken(refreshToken);
+            userId = claims.userId();
+
+            SysUser user = sysUserMapper.selectById(claims.userId());
+            if (user == null) {
+                throw ApiException.unauthorized("刷新令牌已失效，请重新登录");
+            }
+
+            username = user.getUsername();
+            if (Objects.equals(user.getStatus(), USER_STATUS_DISABLED)) {
+                throw ApiException.forbidden("账号已停用，请联系管理员");
+            }
+            checkAndRepairLockStatus(user);
+            validateRefreshTokenSignature(claims, user);
+
+            StpUtil.login(user.getId());
+            StpUtil.getTokenSession().set("operatorName", resolveOperatorName(user));
+
+            AuthLoginVo loginVo = buildLoginVo(user);
+            securityAuditService.record(
+                    user.getId(),
+                    user.getUsername(),
+                    "LOGIN",
+                    "TOKEN_REFRESH",
+                    requestUri,
+                    clientIp,
+                    1,
+                    "刷新令牌成功"
+            );
+            return loginVo;
+        } catch (RuntimeException ex) {
+            securityAuditService.record(
+                    userId,
+                    username,
+                    "LOGIN",
+                    "TOKEN_REFRESH",
                     requestUri,
                     clientIp,
                     0,
@@ -178,6 +247,15 @@ public class AuthServiceImpl implements AuthService {
                 .toList();
     }
 
+    private AuthLoginVo buildLoginVo(SysUser user) {
+        AuthLoginVo loginVo = new AuthLoginVo();
+        loginVo.setToken(StpUtil.getTokenValue());
+        loginVo.setRefreshToken(issueRefreshToken(user.getId()));
+        loginVo.setRoles(getRoleKeysByUserId(user.getId()));
+        loginVo.setUserInfo(buildUserInfo(user));
+        return loginVo;
+    }
+
     private AuthUserInfoVo buildUserInfo(SysUser user) {
         AuthUserInfoVo userInfo = new AuthUserInfoVo();
         userInfo.setId(user.getId());
@@ -199,6 +277,73 @@ public class AuthServiceImpl implements AuthService {
             return user.getUsername();
         }
         return String.valueOf(user.getId());
+    }
+
+    private String issueRefreshToken(Long userId) {
+        SysUser user = sysUserMapper.selectById(userId);
+        if (user == null || StringUtils.isBlank(user.getPasswordHash())) {
+            throw ApiException.unauthorized("刷新令牌签发失败，请重新登录");
+        }
+        long expireAt = Instant.now().getEpochSecond() + refreshTokenTtlSeconds;
+        String nonce = generateNonce();
+        String payload = String.join(":", REFRESH_TOKEN_VERSION, String.valueOf(userId), String.valueOf(expireAt), nonce);
+        String encodedPayload = encodeBase64Url(payload.getBytes(StandardCharsets.UTF_8));
+        return encodedPayload + "." + signPayload(payload, user);
+    }
+
+    private RefreshTokenClaims parseRefreshToken(String refreshToken) {
+        String[] tokenParts = refreshToken.split("\\.", 2);
+        if (tokenParts.length != 2 || StringUtils.isBlank(tokenParts[0]) || StringUtils.isBlank(tokenParts[1])) {
+            throw ApiException.unauthorized("刷新令牌已失效，请重新登录");
+        }
+
+        try {
+            String payload = new String(Base64.getUrlDecoder().decode(tokenParts[0]), StandardCharsets.UTF_8);
+            String[] payloadParts = payload.split(":", 4);
+            if (payloadParts.length != 4 || !REFRESH_TOKEN_VERSION.equals(payloadParts[0])) {
+                throw ApiException.unauthorized("刷新令牌已失效，请重新登录");
+            }
+            Long userId = Long.parseLong(payloadParts[1]);
+            long expireAt = Long.parseLong(payloadParts[2]);
+            if (expireAt <= Instant.now().getEpochSecond()) {
+                throw ApiException.unauthorized("刷新令牌已失效，请重新登录");
+            }
+            return new RefreshTokenClaims(payload, tokenParts[1], userId);
+        } catch (NumberFormatException ex) {
+            throw ApiException.unauthorized("刷新令牌已失效，请重新登录");
+        } catch (IllegalArgumentException ex) {
+            throw ApiException.unauthorized("刷新令牌已失效，请重新登录");
+        }
+    }
+
+    private void validateRefreshTokenSignature(RefreshTokenClaims claims, SysUser user) {
+        String expectedSignature = signPayload(claims.payload(), user);
+        byte[] expected = expectedSignature.getBytes(StandardCharsets.UTF_8);
+        byte[] actual = claims.signature().getBytes(StandardCharsets.UTF_8);
+        if (!MessageDigest.isEqual(expected, actual)) {
+            throw ApiException.unauthorized("刷新令牌已失效，请重新登录");
+        }
+    }
+
+    private String signPayload(String payload, SysUser user) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            String key = refreshTokenSecret + ":" + user.getPasswordHash();
+            mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            return encodeBase64Url(mac.doFinal(payload.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception ex) {
+            throw new IllegalStateException("刷新令牌签名失败", ex);
+        }
+    }
+
+    private String generateNonce() {
+        byte[] bytes = new byte[32];
+        SECURE_RANDOM.nextBytes(bytes);
+        return encodeBase64Url(bytes);
+    }
+
+    private String encodeBase64Url(byte[] bytes) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     private void bindDefaultRole(Long userId) {
@@ -280,5 +425,8 @@ public class AuthServiceImpl implements AuthService {
 
     private String normalizeOptional(String input) {
         return StringUtils.isBlank(input) ? null : input.trim();
+    }
+
+    private record RefreshTokenClaims(String payload, String signature, Long userId) {
     }
 }

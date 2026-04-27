@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20260427-000-baseline-marker
+      author: berlin
+      comment: |
+        Liquibase 接入基线标记。
+        说明：历史全量建表仍由 sql/aether-flow.sql 负责，新变更改由 Liquibase 递增管理。
+      changes:
+        - sql:
+            sql: "select 1;"
+
+  - include:
+      file: db/changelog/sql/20260427-000-wms-core-bootstrap.sql
+      relativeToChangelogFile: false
+
+  - include:
+      file: db/changelog/20260427-000a-wms-legacy-repair.yaml
+      relativeToChangelogFile: false
+
+  - include:
+      file: db/changelog/sql/20260427-001-user-domain-base.sql
+      relativeToChangelogFile: false
+
+  - include:
+      file: db/changelog/sql/20260427-002-user-domain-seed.sql
+      relativeToChangelogFile: false
+
+  - include:
+      file: db/changelog/sql/20260427-003-user-audit-log.sql
+      relativeToChangelogFile: false
