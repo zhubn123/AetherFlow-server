@@ -30,9 +30,7 @@ jobs:
           cache: maven
 
       - name: Build JAR
-        run: |
-          chmod +x mvnw
-          ./mvnw -B -DskipTests clean package
+        run: mvn -B -DskipTests clean package
 
       - name: Resolve JAR path
         id: jar
