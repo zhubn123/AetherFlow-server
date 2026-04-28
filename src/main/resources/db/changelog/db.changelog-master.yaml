@@ -36,3 +36,7 @@ databaseChangeLog:
   - include:
       file: db/changelog/sql/20260428-001-stock-transaction.sql
       relativeToChangelogFile: false
+
+  - include:
+      file: db/changelog/sql/20260428-002-inventory-adjustment.sql
+      relativeToChangelogFile: false

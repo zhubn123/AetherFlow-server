@@ -62,6 +62,12 @@ public interface BizCodeTypeConst {
     String TRANSFER_ORDER = "TO";
 
     /**
+     * 库存调整单编码 - INVENTORY ADJUSTMENT
+     * 用于人工库存增减调整业务的单据
+     */
+    String INVENTORY_ADJUSTMENT = "IA";
+
+    /**
      * 盘点单编码 - INVENTORY COUNT
      * 用于库存盘点业务的单据
      */
