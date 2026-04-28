@@ -8,6 +8,8 @@ import com.berlin.aetherflow.wms.domain.entity.OutboundOrder;
 import com.berlin.aetherflow.wms.domain.query.OutboundOrderQuery;
 import com.berlin.aetherflow.wms.domain.vo.OutboundOrderVo;
 
+import java.util.List;
+
 /**
 * @author berlin
 * @description 针对表【outbound_order(出库单)】的数据库操作Service
@@ -22,4 +24,6 @@ public interface OutboundOrderService extends IService<OutboundOrder> {
     Boolean updateOutboundOrder(OutboundOrderBo bo);
 
     Boolean applyAction(Long id, OutboundOrderActionBo bo);
+
+    Boolean removeOutboundOrders(List<Long> ids);
 }

@@ -1,9 +1,14 @@
 package com.berlin.aetherflow.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.BindException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -14,6 +19,33 @@ public class GlobalExceptionHandler {
     public Result<?> handleApiException(ApiException e, HttpServletRequest request) {
         log.warn("请求路径：{}，业务异常：{}", request.getRequestURI(), e.getMessage());
         return Result.fail(e.getCode(), e.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public Result<?> handleMethodArgumentNotValidException(MethodArgumentNotValidException e, HttpServletRequest request) {
+        String message = e.getBindingResult().getAllErrors().stream()
+                .map(error -> error.getDefaultMessage() == null ? "参数错误" : error.getDefaultMessage())
+                .collect(Collectors.joining("；"));
+        log.warn("请求路径：{}，参数校验失败：{}", request.getRequestURI(), message);
+        return Result.fail(ResultCode.PARAM_ERROR.getCode(), message);
+    }
+
+    @ExceptionHandler(BindException.class)
+    public Result<?> handleBindException(BindException e, HttpServletRequest request) {
+        String message = e.getBindingResult().getAllErrors().stream()
+                .map(error -> error.getDefaultMessage() == null ? "参数错误" : error.getDefaultMessage())
+                .collect(Collectors.joining("；"));
+        log.warn("请求路径：{}，绑定校验失败：{}", request.getRequestURI(), message);
+        return Result.fail(ResultCode.PARAM_ERROR.getCode(), message);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public Result<?> handleConstraintViolationException(ConstraintViolationException e, HttpServletRequest request) {
+        String message = e.getConstraintViolations().stream()
+                .map(violation -> violation.getMessage() == null ? "参数错误" : violation.getMessage())
+                .collect(Collectors.joining("；"));
+        log.warn("请求路径：{}，约束校验失败：{}", request.getRequestURI(), message);
+        return Result.fail(ResultCode.PARAM_ERROR.getCode(), message);
     }
 
     @ExceptionHandler(Exception.class)

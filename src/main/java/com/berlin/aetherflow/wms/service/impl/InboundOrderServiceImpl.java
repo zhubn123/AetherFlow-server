@@ -11,10 +11,13 @@ import com.berlin.aetherflow.common.utils.MapstructUtils;
 import com.berlin.aetherflow.common.utils.OrderUtil;
 import com.berlin.aetherflow.wms.constant.BizCodeTypeConst;
 import com.berlin.aetherflow.wms.constant.OrderStatusConst;
+import com.berlin.aetherflow.wms.constant.StockBizTypeConst;
 import com.berlin.aetherflow.wms.domain.bo.InboundOrderActionBo;
 import com.berlin.aetherflow.wms.domain.bo.InboundOrderBo;
 import com.berlin.aetherflow.wms.domain.bo.InboundOrderItemBo;
+import com.berlin.aetherflow.wms.domain.bo.StockChangeBo;
 import com.berlin.aetherflow.wms.domain.entity.InboundOrder;
+import com.berlin.aetherflow.wms.domain.entity.InboundOrderItem;
 import com.berlin.aetherflow.wms.domain.entity.Location;
 import com.berlin.aetherflow.wms.domain.entity.Warehouse;
 import com.berlin.aetherflow.wms.domain.query.InboundOrderQuery;
@@ -23,6 +26,7 @@ import com.berlin.aetherflow.wms.mapper.InboundOrderMapper;
 import com.berlin.aetherflow.wms.mapper.LocationMapper;
 import com.berlin.aetherflow.wms.mapper.WarehouseMapper;
 import com.berlin.aetherflow.wms.service.InboundOrderItemService;
+import com.berlin.aetherflow.wms.service.InventoryService;
 import com.berlin.aetherflow.wms.service.InboundOrderService;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -30,6 +34,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -52,6 +57,7 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
     private final InboundOrderItemService inboundOrderItemService;
     private final WarehouseMapper warehouseMapper;
     private final LocationMapper locationMapper;
+    private final InventoryService inventoryService;
 
     /**
      * 分页查询入库单
@@ -167,16 +173,63 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
             if (!OrderStatusConst.DRAFT.equals(current)) {
                 throw new RuntimeException("当前状态不可确认");
             }
+            List<InboundOrderItem> orderItems = inboundOrderItemService.lambdaQuery()
+                    .eq(InboundOrderItem::getOrderId, id)
+                    .list();
+            if (orderItems == null || orderItems.isEmpty()) {
+                throw new RuntimeException("入库单明细不能为空");
+            }
+
+            List<StockChangeBo> stockChanges = buildInboundStockChanges(order, orderItems);
+            inventoryService.applyStockChanges(stockChanges);
+
+            boolean itemsUpdated = inboundOrderItemService.updateBatchById(orderItems);
+            if (!itemsUpdated) {
+                throw new RuntimeException("入库单明细确认数量更新失败");
+            }
+
             order.setStatus(OrderStatusConst.CONFIRMED);
+            if (order.getInboundTime() == null) {
+                order.setInboundTime(LocalDateTime.now());
+            }
             boolean ok = updateById(order);
             if (!ok) {
                 throw new RuntimeException("状态更新失败");
             }
-            // TODO 确认后入账库存 + 记录状态流转日志
             return true;
         }
 
         throw new RuntimeException("不支持的动作: " + action);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean removeInboundOrders(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+
+        List<InboundOrder> orders = lambdaQuery()
+                .in(InboundOrder::getId, ids)
+                .list();
+        if (orders.isEmpty()) {
+            return true;
+        }
+
+        InboundOrder confirmedOrder = orders.stream()
+                .filter(order -> OrderStatusConst.CONFIRMED.equals(order.getStatus()))
+                .findFirst()
+                .orElse(null);
+        if (confirmedOrder != null) {
+            throw new RuntimeException("已确认入库单不允许删除: " + confirmedOrder.getOrderNo());
+        }
+
+        List<Long> orderIds = orders.stream()
+                .map(InboundOrder::getId)
+                .toList();
+        inboundOrderItemService.remove(Wrappers.<InboundOrderItem>lambdaQuery()
+                .in(InboundOrderItem::getOrderId, orderIds));
+        return removeByIds(orderIds);
     }
 
     /**
@@ -236,6 +289,40 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
                 throw new RuntimeException("入库单明细库位不属于当前仓库: " + location.getLocationCode());
             }
         }
+    }
+
+    private List<StockChangeBo> buildInboundStockChanges(InboundOrder order, List<InboundOrderItem> orderItems) {
+        List<StockChangeBo> changes = new ArrayList<>(orderItems.size());
+        for (InboundOrderItem item : orderItems) {
+            if (item.getLocationId() == null) {
+                throw new RuntimeException("入库单明细目标库位不能为空，行号: " + item.getLineNo());
+            }
+            BigDecimal actualQty = resolveInboundConfirmedQty(item);
+            item.setReceivedQty(actualQty);
+
+            StockChangeBo change = new StockChangeBo();
+            change.setBizType(StockBizTypeConst.INBOUND_ORDER);
+            change.setBizId(order.getId());
+            change.setWarehouseId(order.getWarehouseId());
+            change.setLocationId(item.getLocationId());
+            change.setMaterialId(item.getMaterialId());
+            change.setChangeQty(actualQty);
+            change.setOperateTime(LocalDateTime.now());
+            change.setRemark(StringUtils.defaultIfBlank(item.getRemark(), order.getRemark()));
+            changes.add(change);
+        }
+        return changes;
+    }
+
+    private BigDecimal resolveInboundConfirmedQty(InboundOrderItem item) {
+        BigDecimal actualQty = item.getReceivedQty();
+        if (actualQty == null || actualQty.compareTo(BigDecimal.ZERO) <= 0) {
+            actualQty = item.getPlannedQty();
+        }
+        if (actualQty == null || actualQty.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("入库单明细确认数量必须大于0，行号: " + item.getLineNo());
+        }
+        return actualQty;
     }
 
     /**

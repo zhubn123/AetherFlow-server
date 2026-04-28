@@ -1,5 +1,7 @@
 package com.berlin.aetherflow.wms.domain.bo;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
@@ -13,5 +15,8 @@ import lombok.Data;
 // version（可选，做并发控制）
 @Data
 public class OutboundOrderActionBo {
-    String action;
+
+    @NotBlank(message = "动作不能为空")
+    @Size(max = 32, message = "动作长度不能超过32个字符")
+    private String action;
 }

@@ -11,17 +11,21 @@ import com.berlin.aetherflow.common.utils.MapstructUtils;
 import com.berlin.aetherflow.common.utils.OrderUtil;
 import com.berlin.aetherflow.wms.constant.BizCodeTypeConst;
 import com.berlin.aetherflow.wms.constant.OrderStatusConst;
+import com.berlin.aetherflow.wms.constant.StockBizTypeConst;
 import com.berlin.aetherflow.wms.domain.bo.OutboundOrderActionBo;
 import com.berlin.aetherflow.wms.domain.bo.OutboundOrderBo;
 import com.berlin.aetherflow.wms.domain.bo.OutboundOrderItemBo;
+import com.berlin.aetherflow.wms.domain.bo.StockChangeBo;
 import com.berlin.aetherflow.wms.domain.entity.Location;
 import com.berlin.aetherflow.wms.domain.entity.OutboundOrder;
+import com.berlin.aetherflow.wms.domain.entity.OutboundOrderItem;
 import com.berlin.aetherflow.wms.domain.entity.Warehouse;
 import com.berlin.aetherflow.wms.domain.query.OutboundOrderQuery;
 import com.berlin.aetherflow.wms.domain.vo.OutboundOrderVo;
 import com.berlin.aetherflow.wms.mapper.LocationMapper;
 import com.berlin.aetherflow.wms.mapper.OutboundOrderMapper;
 import com.berlin.aetherflow.wms.mapper.WarehouseMapper;
+import com.berlin.aetherflow.wms.service.InventoryService;
 import com.berlin.aetherflow.wms.service.OutboundOrderItemService;
 import com.berlin.aetherflow.wms.service.OutboundOrderService;
 import lombok.AllArgsConstructor;
@@ -30,6 +34,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -52,6 +57,7 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
     private final OutboundOrderItemService outboundOrderItemService;
     private final WarehouseMapper warehouseMapper;
     private final LocationMapper locationMapper;
+    private final InventoryService inventoryService;
 
     /**
      * 分页查询出库单
@@ -163,16 +169,63 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
             if (!OrderStatusConst.DRAFT.equals(current)) {
                 throw new RuntimeException("当前状态不可确认");
             }
+            List<OutboundOrderItem> orderItems = outboundOrderItemService.lambdaQuery()
+                    .eq(OutboundOrderItem::getOrderId, id)
+                    .list();
+            if (orderItems == null || orderItems.isEmpty()) {
+                throw new RuntimeException("出库单明细不能为空");
+            }
+
+            List<StockChangeBo> stockChanges = buildOutboundStockChanges(order, orderItems);
+            inventoryService.applyStockChanges(stockChanges);
+
+            boolean itemsUpdated = outboundOrderItemService.updateBatchById(orderItems);
+            if (!itemsUpdated) {
+                throw new RuntimeException("出库单明细确认数量更新失败");
+            }
+
             order.setStatus(OrderStatusConst.CONFIRMED);
+            if (order.getOutboundTime() == null) {
+                order.setOutboundTime(LocalDateTime.now());
+            }
             boolean ok = updateById(order);
             if (!ok) {
                 throw new RuntimeException("状态更新失败");
             }
-            // TODO 确认前校验库存充足 + 确认后扣减库存 + 记录状态流转日志
             return true;
         }
 
         throw new RuntimeException("不支持的动作: " + action);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean removeOutboundOrders(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+
+        List<OutboundOrder> orders = lambdaQuery()
+                .in(OutboundOrder::getId, ids)
+                .list();
+        if (orders.isEmpty()) {
+            return true;
+        }
+
+        OutboundOrder confirmedOrder = orders.stream()
+                .filter(order -> OrderStatusConst.CONFIRMED.equals(order.getStatus()))
+                .findFirst()
+                .orElse(null);
+        if (confirmedOrder != null) {
+            throw new RuntimeException("已确认出库单不允许删除: " + confirmedOrder.getOrderNo());
+        }
+
+        List<Long> orderIds = orders.stream()
+                .map(OutboundOrder::getId)
+                .toList();
+        outboundOrderItemService.remove(Wrappers.<OutboundOrderItem>lambdaQuery()
+                .in(OutboundOrderItem::getOrderId, orderIds));
+        return removeByIds(orderIds);
     }
 
     /**
@@ -232,6 +285,40 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
                 throw new RuntimeException("出库单明细库位不属于当前仓库: " + location.getLocationCode());
             }
         }
+    }
+
+    private List<StockChangeBo> buildOutboundStockChanges(OutboundOrder order, List<OutboundOrderItem> orderItems) {
+        List<StockChangeBo> changes = new ArrayList<>(orderItems.size());
+        for (OutboundOrderItem item : orderItems) {
+            if (item.getLocationId() == null) {
+                throw new RuntimeException("出库单明细来源库位不能为空，行号: " + item.getLineNo());
+            }
+            BigDecimal actualQty = resolveOutboundConfirmedQty(item);
+            item.setShippedQty(actualQty);
+
+            StockChangeBo change = new StockChangeBo();
+            change.setBizType(StockBizTypeConst.OUTBOUND_ORDER);
+            change.setBizId(order.getId());
+            change.setWarehouseId(order.getWarehouseId());
+            change.setLocationId(item.getLocationId());
+            change.setMaterialId(item.getMaterialId());
+            change.setChangeQty(actualQty.negate());
+            change.setOperateTime(LocalDateTime.now());
+            change.setRemark(StringUtils.defaultIfBlank(item.getRemark(), order.getRemark()));
+            changes.add(change);
+        }
+        return changes;
+    }
+
+    private BigDecimal resolveOutboundConfirmedQty(OutboundOrderItem item) {
+        BigDecimal actualQty = item.getShippedQty();
+        if (actualQty == null || actualQty.compareTo(BigDecimal.ZERO) <= 0) {
+            actualQty = item.getPlannedQty();
+        }
+        if (actualQty == null || actualQty.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("出库单明细确认数量必须大于0，行号: " + item.getLineNo());
+        }
+        return actualQty;
     }
 
     /**

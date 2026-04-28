@@ -1,8 +1,14 @@
 package com.berlin.aetherflow.wms.domain.bo;
 
 import com.berlin.aetherflow.common.BaseEntity;
+import com.berlin.aetherflow.common.validation.CreateGroup;
 import com.berlin.aetherflow.wms.domain.entity.OutboundOrder;
 import io.github.linpeilie.annotations.AutoMapper;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Null;
+import jakarta.validation.constraints.Size;
+import jakarta.validation.groups.Default;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -19,6 +25,7 @@ import java.util.List;
 @AutoMapper(target = OutboundOrder.class, reverseConvertGenerate = false)
 public class OutboundOrderBo extends BaseEntity {
 
+    @Null(message = "创建出库单时ID必须为空", groups = CreateGroup.class)
     private Long id;
 
     /**
@@ -29,6 +36,7 @@ public class OutboundOrderBo extends BaseEntity {
     /**
      * 仓库ID。
      */
+    @NotNull(message = "仓库不能为空", groups = CreateGroup.class)
     private Long warehouseId;
 
     /**
@@ -44,10 +52,13 @@ public class OutboundOrderBo extends BaseEntity {
     /**
      * 备注。
      */
+    @Size(max = 255, message = "备注长度不能超过255个字符", groups = {Default.class, CreateGroup.class})
     private String remark;
 
     /**
      * 出库单明细。
      */
-    private List<OutboundOrderItemBo> orderItemsBo;
+    @NotNull(message = "出库单明细不能为空", groups = CreateGroup.class)
+    @Size(min = 1, message = "出库单明细不能为空", groups = {Default.class, CreateGroup.class})
+    private List<@NotNull(message = "出库单明细项不能为空", groups = {Default.class, CreateGroup.class}) @Valid OutboundOrderItemBo> orderItemsBo;
 }

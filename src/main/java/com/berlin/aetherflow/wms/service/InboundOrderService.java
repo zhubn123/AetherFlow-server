@@ -8,6 +8,8 @@ import com.berlin.aetherflow.wms.domain.entity.InboundOrder;
 import com.berlin.aetherflow.wms.domain.query.InboundOrderQuery;
 import com.berlin.aetherflow.wms.domain.vo.InboundOrderVo;
 
+import java.util.List;
+
 /**
  * @author berlin
  * @description 针对表【inbound_order(入库单)】的数据库操作Service
@@ -22,4 +24,6 @@ public interface InboundOrderService extends IService<InboundOrder> {
     Boolean updateInboundOrder(InboundOrderBo bo);
 
     Boolean applyAction(Long id, InboundOrderActionBo bo);
+
+    Boolean removeInboundOrders(List<Long> ids);
 }

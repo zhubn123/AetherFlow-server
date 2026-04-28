@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.berlin.aetherflow.common.PageResult;
 import com.berlin.aetherflow.common.utils.MapstructUtils;
 import com.berlin.aetherflow.common.utils.OrderUtil;
+import com.berlin.aetherflow.wms.domain.bo.StockChangeBo;
 import com.berlin.aetherflow.wms.domain.entity.Area;
 import com.berlin.aetherflow.wms.domain.entity.Inventory;
 import com.berlin.aetherflow.wms.domain.entity.Location;
@@ -21,9 +22,13 @@ import com.berlin.aetherflow.wms.mapper.LocationMapper;
 import com.berlin.aetherflow.wms.mapper.MaterialMapper;
 import com.berlin.aetherflow.wms.mapper.WarehouseMapper;
 import com.berlin.aetherflow.wms.service.InventoryService;
+import com.berlin.aetherflow.wms.service.StockTransactionService;
 import lombok.AllArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,6 +50,7 @@ public class InventoryServiceImpl extends ServiceImpl<InventoryMapper, Inventory
     private final LocationMapper locationMapper;
     private final MaterialMapper materialMapper;
     private final AreaMapper areaMapper;
+    private final StockTransactionService stockTransactionService;
 
     @Override
     public PageResult<InventoryVo> queryList(InventoryQuery query) {
@@ -78,6 +84,70 @@ public class InventoryServiceImpl extends ServiceImpl<InventoryMapper, Inventory
                 .toList();
         fillDisplayFields(records);
         return PageResult.of(result.getCurrent(), result.getSize(), result.getTotal(), result.getPages(), records);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void applyStockChanges(List<StockChangeBo> changes) {
+        if (changes == null || changes.isEmpty()) {
+            return;
+        }
+
+        for (StockChangeBo change : changes) {
+            if (change == null) {
+                continue;
+            }
+            validateStockChange(change);
+
+            Location location = locationMapper.selectById(change.getLocationId());
+            if (location == null) {
+                throw new RuntimeException("库存变动库位不存在: " + change.getLocationId());
+            }
+            if (!Objects.equals(location.getWarehouseId(), change.getWarehouseId())) {
+                throw new RuntimeException("库存变动仓库与库位不一致: " + change.getLocationId());
+            }
+
+            LambdaQueryWrapper<Inventory> lqw = Wrappers.<Inventory>lambdaQuery()
+                    .eq(Inventory::getWarehouseId, change.getWarehouseId())
+                    .eq(Inventory::getLocationId, change.getLocationId())
+                    .eq(Inventory::getMaterialId, change.getMaterialId());
+            Inventory inventory = inventoryMapper.selectOne(lqw);
+            BigDecimal beforeQty = inventory == null || inventory.getQuantity() == null
+                    ? BigDecimal.ZERO
+                    : inventory.getQuantity();
+            BigDecimal afterQty = beforeQty.add(change.getChangeQty());
+
+            if (afterQty.compareTo(BigDecimal.ZERO) < 0) {
+                if (beforeQty.compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new RuntimeException("库位无库存，无法扣减");
+                }
+                throw new RuntimeException("库存不足，无法扣减");
+            }
+
+            if (inventory == null) {
+                Inventory toCreate = new Inventory();
+                toCreate.setWarehouseId(change.getWarehouseId());
+                toCreate.setLocationId(change.getLocationId());
+                toCreate.setMaterialId(change.getMaterialId());
+                toCreate.setQuantity(afterQty);
+                toCreate.setLockedQuantity(BigDecimal.ZERO);
+                boolean saved = save(toCreate);
+                if (!saved) {
+                    throw new RuntimeException("库存创建失败");
+                }
+            } else {
+                inventory.setQuantity(afterQty);
+                if (inventory.getLockedQuantity() == null) {
+                    inventory.setLockedQuantity(BigDecimal.ZERO);
+                }
+                boolean updated = updateById(inventory);
+                if (!updated) {
+                    throw new RuntimeException("库存更新失败");
+                }
+            }
+
+            stockTransactionService.createTransaction(change, location.getAreaId(), beforeQty, afterQty);
+        }
     }
 
     /**
@@ -148,6 +218,27 @@ public class InventoryServiceImpl extends ServiceImpl<InventoryMapper, Inventory
                 record.setMaterialCode(material.getMaterialCode());
                 record.setMaterialName(material.getMaterialName());
             }
+        }
+    }
+
+    private void validateStockChange(StockChangeBo change) {
+        if (StringUtils.isBlank(change.getBizType())) {
+            throw new RuntimeException("库存变动业务类型不能为空");
+        }
+        if (change.getBizId() == null) {
+            throw new RuntimeException("库存变动业务单据ID不能为空");
+        }
+        if (change.getWarehouseId() == null) {
+            throw new RuntimeException("库存变动仓库不能为空");
+        }
+        if (change.getLocationId() == null) {
+            throw new RuntimeException("库存变动库位不能为空");
+        }
+        if (change.getMaterialId() == null) {
+            throw new RuntimeException("库存变动物料不能为空");
+        }
+        if (change.getChangeQty() == null || change.getChangeQty().compareTo(BigDecimal.ZERO) == 0) {
+            throw new RuntimeException("库存变动数量不能为0");
         }
     }
 }

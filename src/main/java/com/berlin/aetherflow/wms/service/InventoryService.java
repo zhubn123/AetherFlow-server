@@ -2,9 +2,12 @@ package com.berlin.aetherflow.wms.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.berlin.aetherflow.common.PageResult;
+import com.berlin.aetherflow.wms.domain.bo.StockChangeBo;
 import com.berlin.aetherflow.wms.domain.entity.Inventory;
 import com.berlin.aetherflow.wms.domain.query.InventoryQuery;
 import com.berlin.aetherflow.wms.domain.vo.InventoryVo;
+
+import java.util.List;
 
 /**
 * @author berlin
@@ -14,4 +17,6 @@ import com.berlin.aetherflow.wms.domain.vo.InventoryVo;
 public interface InventoryService extends IService<Inventory> {
 
     PageResult<InventoryVo> queryList(InventoryQuery query);
+
+    void applyStockChanges(List<StockChangeBo> changes);
 }
