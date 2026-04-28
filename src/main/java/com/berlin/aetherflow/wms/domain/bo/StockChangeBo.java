@@ -37,6 +37,11 @@ public class StockChangeBo {
     private Long materialId;
 
     /**
+     * 单据行号，仅用于错误提示。
+     */
+    private Integer lineNo;
+
+    /**
      * 变动数量（正数入库，负数出库）。
      */
     private BigDecimal changeQty;

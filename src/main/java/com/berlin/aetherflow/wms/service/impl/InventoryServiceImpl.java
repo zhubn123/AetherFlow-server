@@ -1,5 +1,6 @@
 package com.berlin.aetherflow.wms.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -107,46 +108,11 @@ public class InventoryServiceImpl extends ServiceImpl<InventoryMapper, Inventory
                 throw new RuntimeException("库存变动仓库与库位不一致: " + change.getLocationId());
             }
 
-            LambdaQueryWrapper<Inventory> lqw = Wrappers.<Inventory>lambdaQuery()
-                    .eq(Inventory::getWarehouseId, change.getWarehouseId())
-                    .eq(Inventory::getLocationId, change.getLocationId())
-                    .eq(Inventory::getMaterialId, change.getMaterialId());
-            Inventory inventory = inventoryMapper.selectOne(lqw);
-            BigDecimal beforeQty = inventory == null || inventory.getQuantity() == null
-                    ? BigDecimal.ZERO
-                    : inventory.getQuantity();
-            BigDecimal afterQty = beforeQty.add(change.getChangeQty());
-
-            if (afterQty.compareTo(BigDecimal.ZERO) < 0) {
-                if (beforeQty.compareTo(BigDecimal.ZERO) <= 0) {
-                    throw new RuntimeException("库位无库存，无法扣减");
-                }
-                throw new RuntimeException("库存不足，无法扣减");
+            if (change.getChangeQty().compareTo(BigDecimal.ZERO) > 0) {
+                applyInboundChange(change, location);
+                continue;
             }
-
-            if (inventory == null) {
-                Inventory toCreate = new Inventory();
-                toCreate.setWarehouseId(change.getWarehouseId());
-                toCreate.setLocationId(change.getLocationId());
-                toCreate.setMaterialId(change.getMaterialId());
-                toCreate.setQuantity(afterQty);
-                toCreate.setLockedQuantity(BigDecimal.ZERO);
-                boolean saved = save(toCreate);
-                if (!saved) {
-                    throw new RuntimeException("库存创建失败");
-                }
-            } else {
-                inventory.setQuantity(afterQty);
-                if (inventory.getLockedQuantity() == null) {
-                    inventory.setLockedQuantity(BigDecimal.ZERO);
-                }
-                boolean updated = updateById(inventory);
-                if (!updated) {
-                    throw new RuntimeException("库存更新失败");
-                }
-            }
-
-            stockTransactionService.createTransaction(change, location.getAreaId(), beforeQty, afterQty);
+            applyOutboundChange(change, location);
         }
     }
 
@@ -240,6 +206,118 @@ public class InventoryServiceImpl extends ServiceImpl<InventoryMapper, Inventory
         if (change.getChangeQty() == null || change.getChangeQty().compareTo(BigDecimal.ZERO) == 0) {
             throw new RuntimeException("库存变动数量不能为0");
         }
+    }
+
+    private void applyInboundChange(StockChangeBo change, Location location) {
+        LambdaQueryWrapper<Inventory> lqw = Wrappers.<Inventory>lambdaQuery()
+                .eq(Inventory::getWarehouseId, change.getWarehouseId())
+                .eq(Inventory::getLocationId, change.getLocationId())
+                .eq(Inventory::getMaterialId, change.getMaterialId());
+        Inventory inventory = inventoryMapper.selectOne(lqw);
+        BigDecimal beforeQty = inventory == null || inventory.getQuantity() == null
+                ? BigDecimal.ZERO
+                : inventory.getQuantity();
+        BigDecimal afterQty = beforeQty.add(change.getChangeQty());
+
+        if (inventory == null) {
+            Inventory toCreate = new Inventory();
+            toCreate.setWarehouseId(change.getWarehouseId());
+            toCreate.setLocationId(change.getLocationId());
+            toCreate.setMaterialId(change.getMaterialId());
+            toCreate.setQuantity(afterQty);
+            toCreate.setLockedQuantity(BigDecimal.ZERO);
+            boolean saved = save(toCreate);
+            if (!saved) {
+                throw new RuntimeException("库存创建失败");
+            }
+        } else {
+            inventory.setQuantity(afterQty);
+            if (inventory.getLockedQuantity() == null) {
+                inventory.setLockedQuantity(BigDecimal.ZERO);
+            }
+            boolean updated = updateById(inventory);
+            if (!updated) {
+                throw new RuntimeException("库存更新失败");
+            }
+        }
+
+        stockTransactionService.createTransaction(change, location.getAreaId(), beforeQty, afterQty);
+    }
+
+    private void applyOutboundChange(StockChangeBo change, Location location) {
+        LambdaQueryWrapper<Inventory> lqw = Wrappers.<Inventory>lambdaQuery()
+                .eq(Inventory::getWarehouseId, change.getWarehouseId())
+                .eq(Inventory::getLocationId, change.getLocationId())
+                .eq(Inventory::getMaterialId, change.getMaterialId());
+        Inventory inventory = inventoryMapper.selectOne(lqw);
+        if (inventory == null) {
+            throw new RuntimeException(resolveMissingOutboundInventoryMessage(change));
+        }
+
+        BigDecimal deductQty = change.getChangeQty().abs();
+        int updated = inventoryMapper.deductAvailableQuantity(inventory.getId(), deductQty, resolveOperator());
+        if (updated != 1) {
+            throw new RuntimeException(resolveOutboundDeductionFailureMessage(change, deductQty, inventory.getId()));
+        }
+
+        Inventory latestInventory = inventoryMapper.selectById(inventory.getId());
+        if (latestInventory == null || latestInventory.getQuantity() == null) {
+            throw new RuntimeException(withLinePrefix(change, "库存扣减成功后未查询到最新库存，请重试"));
+        }
+        BigDecimal afterQty = latestInventory.getQuantity();
+        BigDecimal beforeQty = afterQty.add(deductQty);
+        stockTransactionService.createTransaction(change, location.getAreaId(), beforeQty, afterQty);
+    }
+
+    private String resolveMissingOutboundInventoryMessage(StockChangeBo change) {
+        Long locationInventoryCount = inventoryMapper.selectCount(Wrappers.<Inventory>lambdaQuery()
+                .eq(Inventory::getWarehouseId, change.getWarehouseId())
+                .eq(Inventory::getLocationId, change.getLocationId())
+                .gt(Inventory::getQuantity, BigDecimal.ZERO));
+        if (locationInventoryCount != null && locationInventoryCount > 0) {
+            return withLinePrefix(change, "库位不存在当前物料库存，物料不匹配");
+        }
+        return withLinePrefix(change, "库位无库存，无法扣减");
+    }
+
+    private String resolveOutboundDeductionFailureMessage(StockChangeBo change, BigDecimal deductQty, Long inventoryId) {
+        Inventory latestInventory = inventoryMapper.selectById(inventoryId);
+        if (latestInventory == null) {
+            return withLinePrefix(change, "库存记录不存在，无法扣减");
+        }
+        BigDecimal quantity = latestInventory.getQuantity() == null ? BigDecimal.ZERO : latestInventory.getQuantity();
+        BigDecimal lockedQuantity = latestInventory.getLockedQuantity() == null ? BigDecimal.ZERO : latestInventory.getLockedQuantity();
+        BigDecimal availableQuantity = quantity.subtract(lockedQuantity);
+        if (availableQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+            return withLinePrefix(change, "库位无可用库存，无法扣减");
+        }
+        if (availableQuantity.compareTo(deductQty) < 0) {
+            return withLinePrefix(change, "库存不足，无法扣减");
+        }
+        return withLinePrefix(change, "库存扣减失败，请重试");
+    }
+
+    private String withLinePrefix(StockChangeBo change, String message) {
+        if (change.getLineNo() == null) {
+            return message;
+        }
+        return "行号 " + change.getLineNo() + "：" + message;
+    }
+
+    private String resolveOperator() {
+        try {
+            Object loginId = StpUtil.getLoginIdDefaultNull();
+            if (loginId != null) {
+                Object operatorName = StpUtil.getTokenSession().get("operatorName");
+                if (operatorName != null && StringUtils.isNotBlank(String.valueOf(operatorName))) {
+                    return String.valueOf(operatorName);
+                }
+                return String.valueOf(loginId);
+            }
+        } catch (Exception ex) {
+            return "system";
+        }
+        return "system";
     }
 }
 

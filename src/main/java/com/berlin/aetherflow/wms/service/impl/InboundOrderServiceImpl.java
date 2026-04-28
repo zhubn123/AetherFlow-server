@@ -306,6 +306,7 @@ public class InboundOrderServiceImpl extends ServiceImpl<InboundOrderMapper, Inb
             change.setWarehouseId(order.getWarehouseId());
             change.setLocationId(item.getLocationId());
             change.setMaterialId(item.getMaterialId());
+            change.setLineNo(item.getLineNo());
             change.setChangeQty(actualQty);
             change.setOperateTime(LocalDateTime.now());
             change.setRemark(StringUtils.defaultIfBlank(item.getRemark(), order.getRemark()));

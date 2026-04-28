@@ -1,5 +1,6 @@
 package com.berlin.aetherflow.wms.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -28,6 +29,7 @@ import com.berlin.aetherflow.wms.mapper.WarehouseMapper;
 import com.berlin.aetherflow.wms.service.InventoryService;
 import com.berlin.aetherflow.wms.service.OutboundOrderItemService;
 import com.berlin.aetherflow.wms.service.OutboundOrderService;
+import com.berlin.aetherflow.wms.support.OutboundOrderConfirmLockSupport;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -58,6 +60,7 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
     private final WarehouseMapper warehouseMapper;
     private final LocationMapper locationMapper;
     private final InventoryService inventoryService;
+    private final OutboundOrderConfirmLockSupport outboundOrderConfirmLockSupport;
 
     /**
      * 分页查询出库单
@@ -153,46 +156,16 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Boolean applyAction(Long id, OutboundOrderActionBo bo) {
-        OutboundOrder order = getById(id);
-        if (order == null) {
-            throw new RuntimeException("出库单不存在");
-        }
-
         String action = bo.getAction();
         if (StringUtils.isBlank(action)) {
             throw new RuntimeException("动作不能为空");
         }
         action = action.trim().toUpperCase(Locale.ROOT);
-        Integer current = order.getStatus();
 
         if ("CONFIRM".equals(action)) {
-            if (!OrderStatusConst.DRAFT.equals(current)) {
-                throw new RuntimeException("当前状态不可确认");
+            try (OutboundOrderConfirmLockSupport.LockHandle ignored = outboundOrderConfirmLockSupport.acquire(id)) {
+                return confirmOutboundOrder(id);
             }
-            List<OutboundOrderItem> orderItems = outboundOrderItemService.lambdaQuery()
-                    .eq(OutboundOrderItem::getOrderId, id)
-                    .list();
-            if (orderItems == null || orderItems.isEmpty()) {
-                throw new RuntimeException("出库单明细不能为空");
-            }
-
-            List<StockChangeBo> stockChanges = buildOutboundStockChanges(order, orderItems);
-            inventoryService.applyStockChanges(stockChanges);
-
-            boolean itemsUpdated = outboundOrderItemService.updateBatchById(orderItems);
-            if (!itemsUpdated) {
-                throw new RuntimeException("出库单明细确认数量更新失败");
-            }
-
-            order.setStatus(OrderStatusConst.CONFIRMED);
-            if (order.getOutboundTime() == null) {
-                order.setOutboundTime(LocalDateTime.now());
-            }
-            boolean ok = updateById(order);
-            if (!ok) {
-                throw new RuntimeException("状态更新失败");
-            }
-            return true;
         }
 
         throw new RuntimeException("不支持的动作: " + action);
@@ -288,6 +261,11 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
     }
 
     private List<StockChangeBo> buildOutboundStockChanges(OutboundOrder order, List<OutboundOrderItem> orderItems) {
+        return buildOutboundStockChanges(order, orderItems, LocalDateTime.now());
+    }
+
+    private List<StockChangeBo> buildOutboundStockChanges(OutboundOrder order, List<OutboundOrderItem> orderItems,
+                                                          LocalDateTime operateTime) {
         List<StockChangeBo> changes = new ArrayList<>(orderItems.size());
         for (OutboundOrderItem item : orderItems) {
             if (item.getLocationId() == null) {
@@ -302,8 +280,9 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
             change.setWarehouseId(order.getWarehouseId());
             change.setLocationId(item.getLocationId());
             change.setMaterialId(item.getMaterialId());
+            change.setLineNo(item.getLineNo());
             change.setChangeQty(actualQty.negate());
-            change.setOperateTime(LocalDateTime.now());
+            change.setOperateTime(operateTime);
             change.setRemark(StringUtils.defaultIfBlank(item.getRemark(), order.getRemark()));
             changes.add(change);
         }
@@ -319,6 +298,67 @@ public class OutboundOrderServiceImpl extends ServiceImpl<OutboundOrderMapper, O
             throw new RuntimeException("出库单明细确认数量必须大于0，行号: " + item.getLineNo());
         }
         return actualQty;
+    }
+
+    private Boolean confirmOutboundOrder(Long id) {
+        OutboundOrder order = getById(id);
+        if (order == null) {
+            throw new RuntimeException("出库单不存在");
+        }
+        if (!OrderStatusConst.DRAFT.equals(order.getStatus())) {
+            if (OrderStatusConst.CONFIRMED.equals(order.getStatus())) {
+                throw new RuntimeException("出库单已确认，请勿重复提交");
+            }
+            throw new RuntimeException("当前状态不可确认");
+        }
+
+        LocalDateTime confirmTime = LocalDateTime.now();
+        int updatedRows = outboundOrderMapper.confirmDraftOrder(
+                id,
+                OrderStatusConst.DRAFT,
+                OrderStatusConst.CONFIRMED,
+                confirmTime,
+                resolveOperator()
+        );
+        if (updatedRows != 1) {
+            OutboundOrder latestOrder = getById(id);
+            if (latestOrder != null && OrderStatusConst.CONFIRMED.equals(latestOrder.getStatus())) {
+                throw new RuntimeException("出库单已确认，请勿重复提交");
+            }
+            throw new RuntimeException("当前状态不可确认");
+        }
+
+        List<OutboundOrderItem> orderItems = outboundOrderItemService.lambdaQuery()
+                .eq(OutboundOrderItem::getOrderId, id)
+                .list();
+        if (orderItems == null || orderItems.isEmpty()) {
+            throw new RuntimeException("出库单明细不能为空");
+        }
+
+        List<StockChangeBo> stockChanges = buildOutboundStockChanges(order, orderItems, confirmTime);
+        inventoryService.applyStockChanges(stockChanges);
+
+        boolean itemsUpdated = outboundOrderItemService.updateBatchById(orderItems);
+        if (!itemsUpdated) {
+            throw new RuntimeException("出库单明细确认数量更新失败");
+        }
+        return true;
+    }
+
+    private String resolveOperator() {
+        try {
+            Object loginId = StpUtil.getLoginIdDefaultNull();
+            if (loginId != null) {
+                Object operatorName = StpUtil.getTokenSession().get("operatorName");
+                if (operatorName != null && StringUtils.isNotBlank(String.valueOf(operatorName))) {
+                    return String.valueOf(operatorName);
+                }
+                return String.valueOf(loginId);
+            }
+        } catch (Exception ex) {
+            return "system";
+        }
+        return "system";
     }
 
     /**
