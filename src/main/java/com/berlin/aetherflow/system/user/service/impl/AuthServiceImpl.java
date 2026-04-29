@@ -2,17 +2,22 @@ package com.berlin.aetherflow.system.user.service.impl;
 
 import cn.dev33.satoken.secure.BCrypt;
 import cn.dev33.satoken.stp.StpUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.berlin.aetherflow.config.ServletUtils;
 import com.berlin.aetherflow.exception.ApiException;
 import com.berlin.aetherflow.system.user.domain.bo.AuthLoginBo;
 import com.berlin.aetherflow.system.user.domain.bo.AuthRefreshBo;
 import com.berlin.aetherflow.system.user.domain.bo.AuthRegisterBo;
+import com.berlin.aetherflow.system.user.domain.entity.SysPermission;
 import com.berlin.aetherflow.system.user.domain.entity.SysRole;
+import com.berlin.aetherflow.system.user.domain.entity.SysRolePermission;
 import com.berlin.aetherflow.system.user.domain.entity.SysUser;
 import com.berlin.aetherflow.system.user.domain.entity.SysUserRole;
 import com.berlin.aetherflow.system.user.domain.vo.AuthLoginVo;
 import com.berlin.aetherflow.system.user.domain.vo.AuthUserInfoVo;
+import com.berlin.aetherflow.system.user.mapper.SysPermissionMapper;
 import com.berlin.aetherflow.system.user.mapper.SysRoleMapper;
+import com.berlin.aetherflow.system.user.mapper.SysRolePermissionMapper;
 import com.berlin.aetherflow.system.user.mapper.SysUserMapper;
 import com.berlin.aetherflow.system.user.mapper.SysUserRoleMapper;
 import com.berlin.aetherflow.system.user.service.AuthService;
@@ -30,6 +35,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -57,6 +63,8 @@ public class AuthServiceImpl implements AuthService {
     private final SysUserMapper sysUserMapper;
     private final SysRoleMapper sysRoleMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
+    private final SysPermissionMapper sysPermissionMapper;
+    private final SysRolePermissionMapper sysRolePermissionMapper;
     private final SecurityAuditService securityAuditService;
 
     @Value("${aether-flow.auth.refresh-token.secret:aether-flow-local-refresh-secret}")
@@ -222,18 +230,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public List<String> getRoleKeysByUserId(Long userId) {
-        if (userId == null) {
-            return List.of();
-        }
-        List<SysUserRole> relations = sysUserRoleMapper.selectListByColumn(SysUserRole::getUserId, userId);
-        if (relations == null || relations.isEmpty()) {
-            return List.of();
-        }
-
-        Set<Long> roleIds = relations.stream()
-                .map(SysUserRole::getRoleId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<Long> roleIds = getActiveRoleIdsByUserId(userId);
         if (roleIds.isEmpty()) {
             return List.of();
         }
@@ -242,6 +239,37 @@ public class AuthServiceImpl implements AuthService {
                 .filter(Objects::nonNull)
                 .filter(role -> Objects.equals(role.getStatus(), USER_STATUS_NORMAL))
                 .map(SysRole::getRoleKey)
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .toList();
+    }
+
+    @Override
+    public List<String> getPermissionKeysByUserId(Long userId) {
+        Set<Long> roleIds = getActiveRoleIdsByUserId(userId);
+        if (roleIds.isEmpty()) {
+            return List.of();
+        }
+
+        LambdaQueryWrapper<SysRolePermission> rolePermissionQuery = new LambdaQueryWrapper<>();
+        rolePermissionQuery.in(SysRolePermission::getRoleId, roleIds);
+        List<SysRolePermission> rolePermissions = sysRolePermissionMapper.selectList(rolePermissionQuery);
+        if (rolePermissions == null || rolePermissions.isEmpty()) {
+            return List.of();
+        }
+
+        Set<Long> permissionIds = rolePermissions.stream()
+                .map(SysRolePermission::getPermissionId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (permissionIds.isEmpty()) {
+            return List.of();
+        }
+
+        return sysPermissionMapper.selectByIds(permissionIds).stream()
+                .filter(Objects::nonNull)
+                .filter(permission -> Objects.equals(permission.getStatus(), USER_STATUS_NORMAL))
+                .map(SysPermission::getPermKey)
                 .filter(StringUtils::isNotBlank)
                 .distinct()
                 .toList();
@@ -355,6 +383,38 @@ public class AuthServiceImpl implements AuthService {
         relation.setUserId(userId);
         relation.setRoleId(operatorRole.getId());
         sysUserRoleMapper.insert(relation);
+    }
+
+    private Set<Long> getActiveRoleIdsByUserId(Long userId) {
+        if (userId == null) {
+            return Set.of();
+        }
+        List<SysUserRole> relations = sysUserRoleMapper.selectListByColumn(SysUserRole::getUserId, userId);
+        if (relations == null || relations.isEmpty()) {
+            return Set.of();
+        }
+
+        Set<Long> relationRoleIds = relations.stream()
+                .map(SysUserRole::getRoleId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (relationRoleIds.isEmpty()) {
+            return Set.of();
+        }
+
+        return filterActiveRoleIds(relationRoleIds);
+    }
+
+    private Set<Long> filterActiveRoleIds(Collection<Long> roleIds) {
+        if (roleIds == null || roleIds.isEmpty()) {
+            return Set.of();
+        }
+        return sysRoleMapper.selectByIds(roleIds).stream()
+                .filter(Objects::nonNull)
+                .filter(role -> Objects.equals(role.getStatus(), USER_STATUS_NORMAL))
+                .map(SysRole::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     private void handleLoginSuccess(SysUser user) {

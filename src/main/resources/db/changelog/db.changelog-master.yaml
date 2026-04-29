@@ -40,3 +40,15 @@ databaseChangeLog:
   - include:
       file: db/changelog/sql/20260428-002-inventory-adjustment.sql
       relativeToChangelogFile: false
+
+  - include:
+      file: db/changelog/sql/20260429-001-user-permission-base.sql
+      relativeToChangelogFile: false
+
+  - include:
+      file: db/changelog/sql/20260429-002-user-permission-seed.sql
+      relativeToChangelogFile: false
+
+  - include:
+      file: db/changelog/sql/20260429-003-system-user-management-permission.sql
+      relativeToChangelogFile: false

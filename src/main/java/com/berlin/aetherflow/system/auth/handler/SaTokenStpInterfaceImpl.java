@@ -18,8 +18,11 @@ public class SaTokenStpInterfaceImpl implements StpInterface {
 
     @Override
     public List<String> getPermissionList(Object loginId, String loginType) {
-        // 阶段一先不启用权限码，后续扩展为菜单/按钮级权限。
-        return List.of();
+        Long userId = parseUserId(loginId);
+        if (userId == null) {
+            return List.of();
+        }
+        return authService.getPermissionKeysByUserId(userId);
     }
 
     @Override

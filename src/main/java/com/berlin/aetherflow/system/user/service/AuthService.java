@@ -51,4 +51,12 @@ public interface AuthService {
      * @return 角色 key 列表
      */
     List<String> getRoleKeysByUserId(Long userId);
+
+    /**
+     * 按用户 ID 查询权限 key 列表。
+     *
+     * @param userId 用户 ID
+     * @return 权限 key 列表
+     */
+    List<String> getPermissionKeysByUserId(Long userId);
 }
