@@ -63,6 +63,9 @@ class AuthPermissionIntegrationTests {
 
         assertFalse(permissions.contains(PermissionConstants.SYSTEM_USER_VIEW));
         assertFalse(permissions.contains(PermissionConstants.SYSTEM_USER_MANAGE));
+        assertFalse(permissions.contains(PermissionConstants.SYSTEM_ROLE_VIEW));
+        assertFalse(permissions.contains(PermissionConstants.SYSTEM_ROLE_MANAGE));
+        assertFalse(permissions.contains(PermissionConstants.SYSTEM_PERMISSION_VIEW));
         assertFalse(permissions.contains(PermissionConstants.WMS_WAREHOUSE_MANAGE));
         assertFalse(permissions.contains(PermissionConstants.WMS_AREA_MANAGE));
         assertFalse(permissions.contains(PermissionConstants.WMS_LOCATION_MANAGE));
@@ -81,6 +84,9 @@ class AuthPermissionIntegrationTests {
 
         assertFalse(permissions.contains(PermissionConstants.SYSTEM_USER_VIEW));
         assertFalse(permissions.contains(PermissionConstants.SYSTEM_USER_MANAGE));
+        assertFalse(permissions.contains(PermissionConstants.SYSTEM_ROLE_VIEW));
+        assertFalse(permissions.contains(PermissionConstants.SYSTEM_ROLE_MANAGE));
+        assertFalse(permissions.contains(PermissionConstants.SYSTEM_PERMISSION_VIEW));
         assertFalse(permissions.contains(PermissionConstants.WMS_OUTBOUND_ORDER_MANAGE));
         assertFalse(permissions.contains(PermissionConstants.WMS_INBOUND_ORDER_MANAGE));
         assertFalse(permissions.contains(PermissionConstants.WMS_INVENTORY_ADJUSTMENT_MANAGE));
@@ -102,6 +108,9 @@ class AuthPermissionIntegrationTests {
         assertTrue(permissions.contains(PermissionConstants.WMS_INVENTORY_ADJUSTMENT_MANAGE));
         assertTrue(permissions.contains(PermissionConstants.SYSTEM_USER_VIEW));
         assertTrue(permissions.contains(PermissionConstants.SYSTEM_USER_MANAGE));
+        assertTrue(permissions.contains(PermissionConstants.SYSTEM_ROLE_VIEW));
+        assertTrue(permissions.contains(PermissionConstants.SYSTEM_ROLE_MANAGE));
+        assertTrue(permissions.contains(PermissionConstants.SYSTEM_PERMISSION_VIEW));
     }
 
     private Long createUserWithRole(String roleKey) {

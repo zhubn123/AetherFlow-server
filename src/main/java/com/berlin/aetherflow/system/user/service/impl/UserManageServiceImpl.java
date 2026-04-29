@@ -11,6 +11,7 @@ import com.berlin.aetherflow.exception.ApiException;
 import com.berlin.aetherflow.system.user.constant.UserConstants;
 import com.berlin.aetherflow.system.user.domain.bo.UserManageUpdateBo;
 import com.berlin.aetherflow.system.user.domain.entity.SysRole;
+import com.berlin.aetherflow.system.user.domain.entity.SysPermission;
 import com.berlin.aetherflow.system.user.domain.entity.SysUser;
 import com.berlin.aetherflow.system.user.domain.entity.SysUserRole;
 import com.berlin.aetherflow.system.user.domain.query.UserManageQuery;
@@ -20,6 +21,7 @@ import com.berlin.aetherflow.system.user.mapper.SysUserMapper;
 import com.berlin.aetherflow.system.user.mapper.SysUserRoleMapper;
 import com.berlin.aetherflow.system.user.service.SecurityAuditService;
 import com.berlin.aetherflow.system.user.service.UserManageService;
+import com.berlin.aetherflow.system.user.support.RolePermissionSupport;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -48,6 +50,7 @@ public class UserManageServiceImpl implements UserManageService {
     private final SysRoleMapper sysRoleMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
     private final SecurityAuditService securityAuditService;
+    private final RolePermissionSupport rolePermissionSupport;
 
     @Override
     public PageResult<UserManageVo> queryUserPage(UserManageQuery query) {
@@ -85,13 +88,14 @@ public class UserManageServiceImpl implements UserManageService {
 
         IPage<SysUser> result = sysUserMapper.selectPage(page, lqw);
         List<SysUser> users = result.getRecords();
-        Map<Long, List<String>> roleMap = buildRoleKeyMap(users.stream()
+        List<Long> userIds = users.stream()
                 .map(SysUser::getId)
                 .filter(Objects::nonNull)
-                .toList());
+                .toList();
+        UserRoleSnapshot snapshot = buildUserRoleSnapshot(userIds);
 
         List<UserManageVo> records = users.stream()
-                .map(user -> toVo(user, roleMap.getOrDefault(user.getId(), List.of())))
+                .map(user -> toVo(user, snapshot))
                 .toList();
         return PageResult.of(result.getCurrent(), result.getSize(), result.getTotal(), result.getPages(), records);
     }
@@ -181,7 +185,7 @@ public class UserManageServiceImpl implements UserManageService {
         }
     }
 
-    private UserManageVo toVo(SysUser user, List<String> roleKeys) {
+    private UserManageVo toVo(SysUser user, UserRoleSnapshot snapshot) {
         UserManageVo vo = new UserManageVo();
         vo.setId(user.getId());
         vo.setUsername(user.getUsername());
@@ -190,13 +194,16 @@ public class UserManageServiceImpl implements UserManageService {
         vo.setPhone(user.getPhone());
         vo.setStatus(user.getStatus());
         vo.setLastLoginTime(user.getLastLoginTime());
-        vo.setRoles(roleKeys);
+        vo.setRoles(snapshot.roleKeyMap().getOrDefault(user.getId(), List.of()));
+        vo.setPermissionKeys(snapshot.permissionKeyMap().getOrDefault(user.getId(), List.of()));
+        vo.setPermissionNames(snapshot.permissionNameMap().getOrDefault(user.getId(), List.of()));
+        vo.setImmutable(isRootAdmin(user));
         return vo;
     }
 
     private Set<Long> resolveUserIdsByRoleKey(String roleKey) {
         SysRole role = sysRoleMapper.selectByColumn(SysRole::getRoleKey, roleKey);
-        if (role == null || !Objects.equals(role.getStatus(), USER_STATUS_NORMAL)) {
+        if (role == null) {
             return Set.of();
         }
 
@@ -210,16 +217,16 @@ public class UserManageServiceImpl implements UserManageService {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    private Map<Long, List<String>> buildRoleKeyMap(Collection<Long> userIds) {
+    private UserRoleSnapshot buildUserRoleSnapshot(Collection<Long> userIds) {
         if (userIds == null || userIds.isEmpty()) {
-            return Map.of();
+            return new UserRoleSnapshot(Map.of(), Map.of(), Map.of());
         }
 
         LambdaQueryWrapper<SysUserRole> relationQuery = new LambdaQueryWrapper<>();
         relationQuery.in(SysUserRole::getUserId, userIds);
         List<SysUserRole> relations = sysUserRoleMapper.selectList(relationQuery);
         if (relations == null || relations.isEmpty()) {
-            return Map.of();
+            return new UserRoleSnapshot(Map.of(), Map.of(), Map.of());
         }
 
         Set<Long> roleIds = relations.stream()
@@ -227,32 +234,62 @@ public class UserManageServiceImpl implements UserManageService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         if (roleIds.isEmpty()) {
-            return Map.of();
+            return new UserRoleSnapshot(Map.of(), Map.of(), Map.of());
         }
 
-        Map<Long, String> roleKeyMap = sysRoleMapper.selectByIds(roleIds).stream()
+        Map<Long, SysRole> roleMap = sysRoleMapper.selectByIds(roleIds).stream()
                 .filter(Objects::nonNull)
-                .filter(role -> Objects.equals(role.getStatus(), USER_STATUS_NORMAL))
-                .filter(role -> StringUtils.isNotBlank(role.getRoleKey()))
                 .collect(Collectors.toMap(
                         SysRole::getId,
-                        SysRole::getRoleKey,
+                        role -> role,
                         (left, right) -> left,
                         LinkedHashMap::new
                 ));
 
-        Map<Long, LinkedHashSet<String>> grouped = new LinkedHashMap<>();
+        Map<Long, LinkedHashSet<String>> roleKeyGrouped = new LinkedHashMap<>();
+        Map<Long, LinkedHashSet<Long>> roleIdGrouped = new LinkedHashMap<>();
         for (SysUserRole relation : relations) {
-            String roleKey = roleKeyMap.get(relation.getRoleId());
-            if (StringUtils.isBlank(roleKey) || relation.getUserId() == null) {
+            SysRole role = roleMap.get(relation.getRoleId());
+            if (role == null || relation.getUserId() == null) {
                 continue;
             }
-            grouped.computeIfAbsent(relation.getUserId(), key -> new LinkedHashSet<>()).add(roleKey);
+            if (StringUtils.isNotBlank(role.getRoleKey())) {
+                roleKeyGrouped.computeIfAbsent(relation.getUserId(), key -> new LinkedHashSet<>()).add(role.getRoleKey());
+            }
+            if (Objects.equals(role.getStatus(), USER_STATUS_NORMAL)) {
+                roleIdGrouped.computeIfAbsent(relation.getUserId(), key -> new LinkedHashSet<>()).add(role.getId());
+            }
         }
 
-        Map<Long, List<String>> result = new LinkedHashMap<>();
-        grouped.forEach((userId, keys) -> result.put(userId, List.copyOf(keys)));
-        return result;
+        Set<Long> activeRoleIds = roleIdGrouped.values().stream()
+                .flatMap(Set::stream)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<Long, List<SysPermission>> permissionMapByRoleId = rolePermissionSupport.buildActivePermissionMapByRoleIds(activeRoleIds);
+
+        Map<Long, List<String>> roleKeyMap = new LinkedHashMap<>();
+        roleKeyGrouped.forEach((userId, keys) -> roleKeyMap.put(userId, List.copyOf(keys)));
+
+        Map<Long, List<String>> permissionKeyMap = new LinkedHashMap<>();
+        Map<Long, List<String>> permissionNameMap = new LinkedHashMap<>();
+        roleIdGrouped.forEach((userId, assignedRoleIds) -> {
+            LinkedHashSet<String> permissionKeys = new LinkedHashSet<>();
+            LinkedHashSet<String> permissionNames = new LinkedHashSet<>();
+            for (Long roleId : assignedRoleIds) {
+                List<SysPermission> permissions = permissionMapByRoleId.getOrDefault(roleId, List.of());
+                for (SysPermission permission : permissions) {
+                    if (StringUtils.isNotBlank(permission.getPermKey())) {
+                        permissionKeys.add(permission.getPermKey());
+                    }
+                    if (StringUtils.isNotBlank(permission.getPermName())) {
+                        permissionNames.add(permission.getPermName());
+                    }
+                }
+            }
+            permissionKeyMap.put(userId, List.copyOf(permissionKeys));
+            permissionNameMap.put(userId, List.copyOf(permissionNames));
+        });
+
+        return new UserRoleSnapshot(roleKeyMap, permissionKeyMap, permissionNameMap);
     }
 
     private LinkedHashSet<String> normalizeRoleKeys(List<String> roleKeys) {
@@ -316,5 +353,12 @@ public class UserManageServiceImpl implements UserManageService {
         }
         return Objects.equals(user.getId(), UserConstants.ROOT_ADMIN_USER_ID)
                 || Objects.equals(user.getUsername(), UserConstants.ROOT_ADMIN_USERNAME);
+    }
+
+    private record UserRoleSnapshot(
+            Map<Long, List<String>> roleKeyMap,
+            Map<Long, List<String>> permissionKeyMap,
+            Map<Long, List<String>> permissionNameMap
+    ) {
     }
 }

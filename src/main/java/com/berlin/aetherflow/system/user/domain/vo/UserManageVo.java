@@ -64,4 +64,22 @@ public class UserManageVo implements Serializable {
      */
     @Schema(description = "角色标识集合")
     private List<String> roles;
+
+    /**
+     * 生效权限标识集合
+     */
+    @Schema(description = "生效权限标识集合")
+    private List<String> permissionKeys;
+
+    /**
+     * 生效权限名称集合
+     */
+    @Schema(description = "生效权限名称集合")
+    private List<String> permissionNames;
+
+    /**
+     * 是否不可编辑
+     */
+    @Schema(description = "是否不可编辑")
+    private Boolean immutable;
 }

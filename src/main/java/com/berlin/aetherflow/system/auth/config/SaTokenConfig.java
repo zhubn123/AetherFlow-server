@@ -41,7 +41,28 @@ public class SaTokenConfig implements WebMvcConfigurer {
 
             SaRouter.match("/api/wms/**").check(r -> checkWmsPermission());
             SaRouter.match("/api/users/**").check(r -> checkUserPermission());
+            SaRouter.match("/api/roles/**").check(r -> checkRolePermission());
+            SaRouter.match("/api/permissions/**").check(r -> checkPermissionCatalogPermission());
         })).addPathPatterns("/**");
+    }
+
+    private void checkPermissionCatalogPermission() {
+        String requestUri = SaHolder.getRequest().getRequestPath();
+        String method = SaHolder.getRequest().getMethod();
+        if (requestUri == null) {
+            return;
+        }
+        checkReadOnlyPermission(requestUri, method, PermissionConstants.SYSTEM_PERMISSION_VIEW);
+    }
+
+    private void checkRolePermission() {
+        String requestUri = SaHolder.getRequest().getRequestPath();
+        String method = SaHolder.getRequest().getMethod();
+        if (requestUri == null) {
+            return;
+        }
+        checkResourcePermission(requestUri, method, PermissionConstants.SYSTEM_ROLE_VIEW,
+                PermissionConstants.SYSTEM_ROLE_MANAGE);
     }
 
     private void checkUserPermission() {
