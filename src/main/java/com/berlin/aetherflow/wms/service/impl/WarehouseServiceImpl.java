@@ -16,6 +16,7 @@ import com.berlin.aetherflow.wms.domain.entity.Warehouse;
 import com.berlin.aetherflow.wms.domain.vo.WarehouseVo;
 import com.berlin.aetherflow.wms.mapper.WarehouseMapper;
 import com.berlin.aetherflow.wms.service.WarehouseService;
+import com.berlin.aetherflow.wms.support.WmsOptionCacheSupport;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
         implements WarehouseService {
 
     private final WarehouseMapper warehouseMapper;
+    private final WmsOptionCacheSupport wmsOptionCacheSupport;
 
     @Override
     public WarehouseVo getByCode(String code) {
@@ -67,19 +69,25 @@ public class WarehouseServiceImpl extends ServiceImpl<WarehouseMapper, Warehouse
         // TODO 仓库名称是否重复
         warehouse.setWarehouseCode(CodeGenerate.generateSimple(BizCodeTypeConst.WAREHOUSE));
         warehouseMapper.insert(warehouse);
+        wmsOptionCacheSupport.evictWarehouseRelatedOptions();
     }
 
     @Override
     public void updateWarehouse(WarehouseBo bo) {
         Warehouse warehouse = MapstructUtils.convert(bo, Warehouse.class);
         Assert.isFalse(Objects.isNull(warehouse), "请填写仓库信息");
+        // 更新时不允许通过 BO 覆盖系统生成的编码。
         warehouse.setWarehouseCode(null);
         warehouseMapper.updateById(warehouse);
+        wmsOptionCacheSupport.evictWarehouseRelatedOptions();
     }
 
     @Override
     public void deleteWarehouseByIds(List<Long> ids) {
         warehouseMapper.deleteByIds(ids);
+        if (ids != null && !ids.isEmpty()) {
+            wmsOptionCacheSupport.evictWarehouseRelatedOptions();
+        }
     }
 }
 

@@ -19,6 +19,7 @@ import com.berlin.aetherflow.wms.mapper.AreaMapper;
 import com.berlin.aetherflow.wms.mapper.LocationMapper;
 import com.berlin.aetherflow.wms.mapper.WarehouseMapper;
 import com.berlin.aetherflow.wms.service.LocationService;
+import com.berlin.aetherflow.wms.support.WmsOptionCacheSupport;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,7 @@ public class LocationServiceImpl extends ServiceImpl<LocationMapper, Location>
     private final LocationMapper locationMapper;
     private final WarehouseMapper warehouseMapper;
     private final AreaMapper areaMapper;
+    private final WmsOptionCacheSupport wmsOptionCacheSupport;
 
     @Override
     public PageResult<LocationVo> queryList(LocationQuery query) {
@@ -85,6 +87,7 @@ public class LocationServiceImpl extends ServiceImpl<LocationMapper, Location>
         }
         location.setLocationCode(CodeGenerate.generateSimple(BizCodeTypeConst.LOCATION));
         locationMapper.insert(location);
+        wmsOptionCacheSupport.evictLocationOptions();
         return location.getId();
     }
 
@@ -97,12 +100,20 @@ public class LocationServiceImpl extends ServiceImpl<LocationMapper, Location>
         validateAreaBelongsWarehouse(bo.getWarehouseId(), bo.getAreaId());
         Location location = MapstructUtils.convert(bo, Location.class);
         location.setLocationCode(null);
-        return updateById(location);
+        boolean updated = updateById(location);
+        if (updated) {
+            wmsOptionCacheSupport.evictLocationOptions();
+        }
+        return updated;
     }
 
     @Override
     public Boolean removeLocations(List<Long> ids) {
-        return removeByIds(ids);
+        boolean removed = removeByIds(ids);
+        if (removed && ids != null && !ids.isEmpty()) {
+            wmsOptionCacheSupport.evictLocationOptions();
+        }
+        return removed;
     }
 
     /**

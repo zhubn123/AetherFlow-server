@@ -52,6 +52,10 @@ aether-flow:
       secret: ${AUTH_REFRESH_TOKEN_SECRET:aether-flow-local-refresh-secret}
       ttl-seconds: ${AUTH_REFRESH_TOKEN_TTL_SECONDS:604800}
   wms:
+    option-cache:
+      redis-ttl: ${WMS_OPTION_CACHE_REDIS_TTL:10m}
+      redis-empty-ttl: ${WMS_OPTION_CACHE_REDIS_EMPTY_TTL:30s}
+      redis-failure-backoff: ${WMS_OPTION_CACHE_REDIS_FAILURE_BACKOFF:30s}
     outbound-confirm-lock:
       ttl: ${WMS_OUTBOUND_CONFIRM_LOCK_TTL:15s}
       redis-failure-backoff: ${WMS_OUTBOUND_CONFIRM_LOCK_REDIS_FAILURE_BACKOFF:30s}

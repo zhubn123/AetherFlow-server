@@ -15,6 +15,7 @@ import com.berlin.aetherflow.wms.domain.query.MaterialQuery;
 import com.berlin.aetherflow.wms.domain.vo.MaterialVo;
 import com.berlin.aetherflow.wms.mapper.MaterialMapper;
 import com.berlin.aetherflow.wms.service.MaterialService;
+import com.berlin.aetherflow.wms.support.WmsOptionCacheSupport;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ public class MaterialServiceImpl extends ServiceImpl<MaterialMapper, Material>
         implements MaterialService {
 
     private final MaterialMapper materialMapper;
+    private final WmsOptionCacheSupport wmsOptionCacheSupport;
 
     @Override
     public PageResult<MaterialVo> queryList(MaterialQuery query) {
@@ -74,6 +76,7 @@ public class MaterialServiceImpl extends ServiceImpl<MaterialMapper, Material>
         }
         material.setMaterialCode(CodeGenerate.generateSimple(BizCodeTypeConst.MATERIAL));
         materialMapper.insert(material);
+        wmsOptionCacheSupport.evictMaterialOptions();
         return material.getId();
     }
 
@@ -84,13 +87,22 @@ public class MaterialServiceImpl extends ServiceImpl<MaterialMapper, Material>
             throw new RuntimeException("物料不存在");
         }
         Material material = MapstructUtils.convert(bo, Material.class);
+        // 更新时不允许通过 BO 覆盖系统生成的编码。
         material.setMaterialCode(null);
-        return updateById(material);
+        boolean updated = updateById(material);
+        if (updated) {
+            wmsOptionCacheSupport.evictMaterialOptions();
+        }
+        return updated;
     }
 
     @Override
     public Boolean removeMaterials(List<Long> ids) {
-        return removeByIds(ids);
+        boolean removed = removeByIds(ids);
+        if (removed && ids != null && !ids.isEmpty()) {
+            wmsOptionCacheSupport.evictMaterialOptions();
+        }
+        return removed;
     }
 
 }
