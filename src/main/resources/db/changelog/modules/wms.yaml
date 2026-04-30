@@ -1,0 +1,3 @@
+# WMS module changelog entry point.
+# Add new WMS migrations from db/changelog/sql/wms here.
+databaseChangeLog: []

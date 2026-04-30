@@ -1,0 +1,4 @@
+# Platform-level changelog entry point.
+# Keep historical flat SQL includes in db.changelog-master.yaml.
+# Add new platform-wide migrations from db/changelog/sql/platform here.
+databaseChangeLog: []
